@@ -16,9 +16,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Geologica:wght@400;600;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="base.css?v=82c3da53">
-<link rel="stylesheet" href="css/lenta.css?v=82c3da53">
-<link rel="stylesheet" href="css/list.css?v=82c3da53">
+<link rel="stylesheet" href="base.css?v=3e4e8503">
+<link rel="stylesheet" href="css/lenta.css?v=3e4e8503">
+<link rel="stylesheet" href="css/list.css?v=3e4e8503">
+<link rel="stylesheet" href="css/nastroiki.css?v=3e4e8503">
 </head>
 <body>
 <div class="player-box"><div id="player"></div></div>
@@ -28,11 +29,22 @@
 </main>
 
 <header class="top">
-  <div class="brand"><img src="img/znak.svg" alt="">Калейдоскоп</div>
-  <button class="pill" id="novoe">Что нового</button>
+  <div class="brand"><img src="img/znak.svg" alt=""><span>Калейдоскоп</span></div>
+  <div class="tools">
+    <button class="pill" data-install hidden>Установить</button>
+    <button class="pill ico" id="nastr" aria-label="Настройки"></button>
+  </div>
 </header>
 
 <button class="hint" id="hint"></button>
+
+<div class="sheet" id="nast" hidden>
+  <div class="sheet-bg" data-close></div>
+  <div class="sheet-box tall" role="dialog" aria-label="Настройки">
+    <div class="sheet-head"><b>Настройки</b><button class="sheet-close" data-close>Готово</button></div>
+    <div id="nast-body"></div>
+  </div>
+</div>
 
 <div class="sheet" id="sheet" hidden>
   <div class="sheet-bg" data-close></div>
@@ -42,6 +54,6 @@
   </div>
 </div>
 
-<script type="module" src="js/lenta.js?v=82c3da53"></script>
+<script type="module" src="js/lenta.js?v=3e4e8503"></script>
 </body>
 </html>

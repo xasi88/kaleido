@@ -1,6 +1,6 @@
 // Подбор ролика: какая тема следующая, без повторов, учёба на досмотрах.
 // Без DOM и без памяти телефона: всё состояние в объекте st (его хранит pamyat.js). Тесты: tests/podbor.test.mjs.
-import { TOPICS, TOPIC, GROUPS } from './topics.js?v=82c3da53';
+import { TOPICS, TOPIC, GROUPS } from './topics.js?v=3e4e8503';
 
 export const EXPLORE_EVERY = 3; // каждый третий ролик из новой темы
 export const ORDERS = 4;        // сколько разных выдач у одной темы (порядок в worker/src/index.js)
@@ -10,7 +10,11 @@ const GROUP_IDS = Object.keys(GROUPS);
 // Цвет группы по кругу из шести цветов брендбука: 't1'...'t6'
 export const color = (g, shift = 0) => 't' + ((GROUP_IDS.indexOf(g) + shift) % 6 + 1);
 
-export const fresh = () => ({ n: 0, seen: {}, g: {}, t: {}, pools: {}, orders: {}, spent: {}, last: [] });
+// cfg: настройки (выключенные темы, язык, страна), at: время записи, r: время «Начать заново»
+export const fresh = () => ({
+  n: 0, seen: {}, g: {}, t: {}, pools: {}, orders: {}, spent: {}, last: [], at: 0, r: 0,
+  cfg: { off: [], lang: '', reg: '', at: 0 },
+});
 
 const score = (o, id) => (o[id] ? o[id].s : 0);
 const shows = (o, id) => (o[id] ? o[id].k : 0);
@@ -21,8 +25,10 @@ export const isExplore = st => st.n % EXPLORE_EVERY === EXPLORE_EVERY - 1;
 export function pickTopic(st, rnd = Math.random, force) {
   const lastIds = st.last.slice(-3);
   const lastGroup = st.last.length ? TOPIC[st.last[st.last.length - 1]]?.[1] : null;
-  let cand = TOPICS.filter(t => !st.spent[t[0]] && !lastIds.includes(t[0]) && t[1] !== lastGroup);
-  if (!cand.length) cand = TOPICS.filter(t => !st.spent[t[0]]);
+  const off = new Set(st.cfg?.off || []);
+  const open = TOPICS.filter(t => !st.spent[t[0]] && !off.has(t[0]));
+  let cand = open.filter(t => !lastIds.includes(t[0]) && t[1] !== lastGroup);
+  if (!cand.length) cand = open;
   if (!cand.length) return { topic: null, why: null };
 
   if (force === 'new' || isExplore(st)) {
@@ -111,4 +117,43 @@ export async function nextItem(st, fetchFn, force, rnd = Math.random) {
 export function putBack(st, item) {
   delete st.seen[item.v.id];
   (st.pools[item.topic[0]] || (st.pools[item.topic[0]] = [])).unshift(item.v);
+}
+
+// Новые настройки. Другой язык или страна: запас роликов и выдачи тем начинаются заново.
+export function setCfg(st, next) {
+  const was = st.cfg || fresh().cfg;
+  st.cfg = { ...was, ...next, off: [...new Set(next.off || was.off)], at: Date.now() };
+  if (st.cfg.lang !== was.lang || st.cfg.reg !== was.reg) { st.pools = {}; st.orders = {}; st.spent = {}; }
+}
+
+// «Начать заново»: лента забывает показанные ролики и оценки, настройки остаются
+export function restart(st) {
+  const { cfg } = st;
+  Object.assign(st, fresh(), { cfg, r: Date.now() });
+}
+
+// Память с другого устройства. Свежая запись главнее, показанные ролики складываются.
+// «Начать заново» на одном устройстве: его память главнее старой памяти другого.
+export function merge(local, cloud) {
+  if (!cloud || !cloud.seen) return local;
+  const rl = local.r || 0;
+  const rc = cloud.r || 0;
+  let a = (cloud.at || 0) > (local.at || 0) ? cloud : local;
+  if (rl !== rc) a = rl > rc ? local : cloud;
+  const b = a === local ? cloud : local;
+  const out = { ...fresh(), ...a };
+  if (rl === rc) out.seen = { ...b.seen, ...a.seen };
+  const cfg = (cloud.cfg?.at || 0) > (local.cfg?.at || 0) ? cloud.cfg : local.cfg;
+  if (cfg && (cfg.lang !== out.cfg.lang || cfg.reg !== out.cfg.reg)) { out.pools = {}; out.orders = {}; out.spent = {}; }
+  if (cfg) out.cfg = cfg;
+  return out;
+}
+
+// «Что я смотрю»: группы по показам и оценке, любимые темы
+export function stats(st) {
+  const groups = GROUP_IDS.map(g => ({ g, k: shows(st.g, g), s: score(st.g, g) }))
+    .filter(x => x.k > 0).sort((x, y) => y.s - x.s || y.k - x.k);
+  const top = TOPICS.map(t => ({ t, k: shows(st.t, t[0]), s: score(st.t, t[0]) }))
+    .filter(x => x.k >= 2 && x.s > 0).sort((x, y) => y.s - x.s).slice(0, 5);
+  return { n: st.n, groups, top };
 }

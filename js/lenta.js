@@ -1,14 +1,14 @@
 // Лента: карточки роликов поверх плеера, листание, кнопки, учёба подбора.
-import { GROUPS } from './topics.js?v=82c3da53';
-import * as P from './podbor.js?v=82c3da53';
-import { load, save } from './pamyat.js?v=82c3da53';
-import { fetchTopic } from './api.js?v=82c3da53';
-import * as player from './player.js?v=82c3da53';
-import { ICON } from './icons.js?v=82c3da53';
-import './novoe.js?v=82c3da53';
+import { GROUPS } from './topics.js?v=3e4e8503';
+import * as P from './podbor.js?v=3e4e8503';
+import { st, save, pull } from './pamyat.js?v=3e4e8503';
+import { fetchTopic } from './api.js?v=3e4e8503';
+import * as player from './player.js?v=3e4e8503';
+import { ICON } from './icons.js?v=3e4e8503';
+import './ustanovka.js?v=3e4e8503';
+import * as nastroiki from './nastroiki.js?v=3e4e8503';
 
 const AHEAD = 2; // сколько роликов держать готовыми впереди
-const st = load();
 const feed = document.getElementById('feed');
 const hint = document.getElementById('hint');
 const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -26,7 +26,7 @@ const WHY = {
 const STOP = {
   limit: 'Лимит YouTube на сегодня кончился. Лента вернётся завтра.',
   net: 'Нет связи с YouTube. Проверьте VPN и обновите страницу.',
-  empty: 'Вы посмотрели все темы. Новые темы придут с новой версией.',
+  empty: 'Темы кончились или выключены. Включите темы или выберите другой язык в настройках.',
 };
 
 hint.innerHTML = ICON.sound + 'Звук: коснитесь экрана';
@@ -66,18 +66,20 @@ function stop(kind) {
   document.querySelector('.wait')?.remove();
   const el = document.createElement('section');
   el.className = 'slide msg';
-  el.innerHTML = '<p></p><button class="main">Обновить</button>';
+  el.innerHTML = '<p></p><button class="main"></button>';
   el.querySelector('p').textContent = STOP[kind];
-  el.querySelector('button').onclick = () => location.reload();
+  const b = el.querySelector('button');
+  b.textContent = kind === 'empty' ? 'Настройки' : 'Обновить';
+  b.onclick = kind === 'empty' ? nastroiki.open : () => location.reload();
   feed.append(el);
 }
 
 async function run() {
   try {
     while (!stopped && items.length - 1 - Math.max(cur, 0) < AHEAD) {
-      const it = await P.nextItem(st, fetchTopic, wantNew ? 'new' : undefined);
+      const it = await P.nextItem(st, (id, o) => fetchTopic(id, o, st.cfg), wantNew ? 'new' : undefined);
       wantNew = false;
-      save(st);
+      save();
       if (!it) { stop('empty'); break; }
       it.el = slide(it);
       items.push(it);
@@ -103,7 +105,7 @@ function leave() {
   }
   it.done = true;
   it.el.classList.remove('live', 'paused');
-  save(st);
+  save();
 }
 
 function activate(i) {
@@ -125,13 +127,30 @@ const watch = new IntersectionObserver(es => {
 
 const go = i => items[i]?.el.scrollIntoView({ behavior: calm ? 'auto' : 'smooth' });
 
+// Убрать ролики, которые ждут впереди: они вернутся в запас своих тем
+function dropAhead() {
+  for (const it of items.splice(cur + 1)) { P.putBack(st, it); watch.unobserve(it.el); it.el.remove(); }
+}
+
 async function newTopic() {
   await filling;
-  for (const it of items.splice(cur + 1)) { P.putBack(st, it); watch.unobserve(it.el); it.el.remove(); }
+  dropAhead();
   wantNew = true;
   await fill();
   go(cur + 1);
 }
+
+// Новые настройки (nastroiki.js): ролик на экране остаётся, следующие уже по новым настройкам
+addEventListener('kaleido:cfg', async e => {
+  await filling;
+  dropAhead();
+  P.setCfg(st, e.detail);
+  save(true);
+  for (const m of feed.querySelectorAll('.slide.msg')) m.remove();
+  stopped = false;
+  await fill();
+  if (cur < 0 && items[0]) activate(0);
+});
 
 function sound() {
   if (!player.isMuted()) return false;
@@ -155,9 +174,9 @@ feed.addEventListener('click', e => {
   if (a === 'like') {
     own.like = !own.like;
     b.classList.toggle('on', own.like);
-    if (own.like) { P.learn(st, own.topic[0], 1); save(st); }
+    if (own.like) { P.learn(st, own.topic[0], 1); save(); }
   }
-  if (a === 'less') { own.less = true; P.learn(st, own.topic[0], -1); save(st); go(cur + 1); }
+  if (a === 'less') { own.less = true; P.learn(st, own.topic[0], -1); save(); go(cur + 1); }
   if (a === 'new') newTopic();
   if (a === 'out') player.pause();
 });
@@ -175,4 +194,5 @@ setInterval(() => {
   if (bar) bar.style.transform = `scaleX(${player.progress()})`;
 }, 250);
 
+await pull(); // память с другого устройства, если облако подключено
 fill();

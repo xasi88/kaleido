@@ -1,8 +1,14 @@
-// Лист «Что нового»: версии из versions.js.
-import { VERSIONS } from './versions.js?v=82c3da53';
+// Лист «Что нового»: версии из versions.js. Новая версия ещё не открыта: точка на кнопке настроек.
+import { VERSIONS } from './versions.js?v=3e4e8503';
 
+const KEY = 'kaleido.ver';
 const sheet = document.getElementById('sheet');
 const list = document.getElementById('sheet-list');
+const now = VERSIONS[0].v;
+
+export function unseen() {
+  try { return localStorage.getItem(KEY) !== now; } catch (e) { return false; }
+}
 
 function render() {
   list.textContent = '';
@@ -19,8 +25,10 @@ function render() {
   }
 }
 
-function open() {
+export function open() {
   if (!list.childElementCount) render();
+  try { localStorage.setItem(KEY, now); } catch (e) { /* память закрыта */ }
+  dispatchEvent(new Event('kaleido:seen'));
   sheet.hidden = false;
   requestAnimationFrame(() => requestAnimationFrame(() => sheet.classList.add('open')));
 }
@@ -30,6 +38,5 @@ function close() {
   setTimeout(() => { sheet.hidden = true; }, 250);
 }
 
-document.getElementById('novoe').addEventListener('click', open);
 sheet.addEventListener('click', e => { if (e.target.closest('[data-close]')) close(); });
 addEventListener('keydown', e => { if (e.key === 'Escape' && !sheet.hidden) close(); });
