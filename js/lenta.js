@@ -1,14 +1,17 @@
 // Лента: карточки роликов поверх плеера, листание, кнопки, учёба подбора.
-import { GROUPS } from './topics.js?v=54b72f24';
-import * as P from './podbor.js?v=54b72f24';
-import { st, save, pull } from './pamyat.js?v=54b72f24';
-import { fetchTopic } from './api.js?v=54b72f24';
-import * as player from './player.js?v=54b72f24';
-import { ICON } from './icons.js?v=54b72f24';
-import './ustanovka.js?v=54b72f24';
-import * as nastroiki from './nastroiki.js?v=54b72f24';
+// Вид «Меньше и гаснет» (брендбук, журнал 2026-11-08): шапки нет, подписи гаснут через 3 с, касание показывает их снова.
+import { GROUPS } from './topics.js?v=91578ed6';
+import * as P from './podbor.js?v=91578ed6';
+import { st, save, pull } from './pamyat.js?v=91578ed6';
+import { fetchTopic } from './api.js?v=91578ed6';
+import * as player from './player.js?v=91578ed6';
+import { ICON } from './icons.js?v=91578ed6';
+import './ustanovka.js?v=91578ed6';
+import * as nastroiki from './nastroiki.js?v=91578ed6';
 
+window.kaleido = 1; // лента загрузилась (index.html, kaleidoFail)
 const AHEAD = 2; // сколько роликов держать готовыми впереди
+const HIDE = 3000; // подписи гаснут через 3 с
 const feed = document.getElementById('feed');
 const hint = document.getElementById('hint');
 const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -17,6 +20,7 @@ let cur = -1;
 let stopped = false;
 let wantNew = false;
 let filling = Promise.resolve();
+let hideT = 0;
 
 const WHY = {
   new: () => 'Новая тема',
@@ -31,30 +35,38 @@ const STOP = {
 
 hint.innerHTML = ICON.sound + 'Звук: коснитесь экрана';
 
+// Широкий экран (Surface, планшет лёжа): поля сбоку от ролика 9:16 от 240 точек, подписи встают в левое поле
+const wide = () => document.documentElement.classList.toggle('wide', innerWidth - innerHeight * 9 / 16 >= 480);
+wide();
+addEventListener('resize', wide);
+
 function slide(it) {
   const g = it.topic[1];
   const el = document.createElement('section');
-  el.className = 'slide';
+  el.className = 'slide' + (it.v.l ? ' l' : '');
   el.style.setProperty('--c', `var(--${P.color(g)})`);
   el.style.setProperty('--c2', `var(--${P.color(g, 1)})`);
+  // Картинка до начала ролика: короткий 4:3 обрезается по экрану, обычный 16:9 целиком
+  const pic = it.v.l ? 'mqdefault' : 'hqdefault';
+  const out = it.v.l ? 'watch?v=' : 'shorts/';
   el.innerHTML = `
-    <div class="thumb" style="background-image:url(https://i.ytimg.com/vi/${it.v.id}/hqdefault.jpg)"></div>
+    <div class="thumb" style="background-image:url(https://i.ytimg.com/vi/${it.v.id}/${pic}.jpg)"></div>
     <div class="shade"></div>
     <div class="pp">${ICON.play}</div>
     <div class="side">
+      <button class="act" data-a="nastr"><i>${ICON.gear}</i>Настройки</button>
       <button class="act" data-a="like"><i>${ICON.heart}</i>Ещё такое</button>
       <button class="act" data-a="less"><i>${ICON.less}</i>Меньше</button>
       <button class="act" data-a="new"><i>${ICON.dice}</i>Новая тема</button>
-      <a class="act" data-a="out" href="https://www.youtube.com/shorts/${it.v.id}" target="_blank" rel="noopener"><i>${ICON.out}</i>В YouTube</a>
+      <a class="act" data-a="out" href="https://www.youtube.com/${out}${it.v.id}" target="_blank" rel="noopener"><i>${ICON.out}</i>В YouTube</a>
     </div>
     <div class="info">
-      <div class="chips"><span class="chip"></span><span class="chip"></span></div>
-      <p class="ttl"></p><p class="ch"></p><p class="why"></p>
+      <p class="ttl"></p><p class="why"></p>
+      <p class="line"><span class="chip g"></span><span class="chip t"></span><span class="ch"></span></p>
     </div>
     <div class="bar"><i></i></div>`;
-  const [c1, c2] = el.querySelectorAll('.chip');
-  c1.textContent = GROUPS[g];
-  c2.textContent = it.topic[2];
+  el.querySelector('.chip.g').textContent = GROUPS[g];
+  el.querySelector('.chip.t').textContent = it.topic[2];
   el.querySelector('.ttl').textContent = it.v.title;
   el.querySelector('.ch').textContent = it.v.ch;
   el.querySelector('.why').textContent = WHY[it.why](g);
@@ -74,6 +86,12 @@ function stop(kind) {
   feed.append(el);
 }
 
+// Следующий ролик в запасной плеер, когда текущий уже играет
+function warm() {
+  const n = items[cur + 1];
+  if (n && items[cur]?.el.classList.contains('live')) player.preload(n.v.id, n.v.l);
+}
+
 async function run() {
   try {
     while (!stopped && items.length - 1 - Math.max(cur, 0) < AHEAD) {
@@ -90,6 +108,7 @@ async function run() {
   } catch (e) {
     stop(e.message === 'limit' ? 'limit' : 'net');
   }
+  warm();
 }
 
 function fill() {
@@ -97,11 +116,19 @@ function fill() {
   return filling;
 }
 
+// Подписи: видны 3 с, потом гаснут. На паузе видны всегда.
+function show(it) {
+  if (!it) return;
+  it.el.classList.remove('calm');
+  clearTimeout(hideT);
+  hideT = setTimeout(() => { if (!it.el.classList.contains('paused')) it.el.classList.add('calm'); }, HIDE);
+}
+
 function leave() {
   const it = items[cur];
   if (!it) return;
   if (!it.done && !it.like && !it.less && !it.bad) {
-    P.learn(st, it.topic[0], P.reward({ watched: player.watched(), duration: player.duration() }));
+    P.learn(st, it.topic[0], P.reward({ watched: player.watched(), duration: player.duration(), long: it.v.l }));
   }
   it.done = true;
   it.el.classList.remove('live', 'paused');
@@ -113,7 +140,8 @@ function activate(i) {
   leave();
   cur = i;
   const it = items[i];
-  player.play(it.v.id, () => it.el.classList.add('live'));
+  show(it);
+  player.play(it.v.id, () => { it.el.classList.add('live'); warm(); }, it.v.l);
   fill();
 }
 
@@ -127,11 +155,13 @@ const watch = new IntersectionObserver(es => {
 
 const go = i => items[i]?.el.scrollIntoView({ behavior: calm ? 'auto' : 'smooth' });
 
-// Ролик не играет (запрещён вне YouTube, удалён): сразу следующий, тема без минуса
+// Ролик не играет (запрещён вне YouTube, удалён, молчит 10 с): сразу следующий, тема без минуса
 player.onFail(id => {
   const it = items[cur];
   if (it && it.v.id === id && !it.bad) { it.bad = true; go(cur + 1); }
 });
+// Обычный ролик кончился: следующий
+player.onEnded(() => go(cur + 1));
 
 // Убрать ролики, которые ждут впереди: они вернутся в запас своих тем
 function dropAhead() {
@@ -167,16 +197,24 @@ function sound() {
 
 hint.addEventListener('click', sound);
 
+// Касание ролика: подписи погасли или звук ещё не включён, сначала они. Иначе пауза.
+function tap() {
+  const it = items[cur];
+  const first = sound();
+  if (!it) return;
+  if (first || it.el.classList.contains('calm')) { show(it); return; }
+  const on = player.toggle();
+  it.el.classList.toggle('paused', !on);
+  if (on) show(it); else clearTimeout(hideT);
+}
+
 feed.addEventListener('click', e => {
   const b = e.target.closest('[data-a]');
-  const first = sound();
-  const it = items[cur];
-  if (!b) {
-    if (it && !first && !e.target.closest('.msg')) it.el.classList.toggle('paused', !player.toggle());
-    return;
-  }
+  if (!b) { if (!e.target.closest('.msg')) tap(); return; }
+  sound();
   const own = items.find(x => x.el.contains(b));
   const a = b.dataset.a;
+  if (a === 'nastr') nastroiki.open();
   if (a === 'like') {
     own.like = !own.like;
     b.classList.toggle('on', own.like);
@@ -188,17 +226,20 @@ feed.addEventListener('click', e => {
 });
 
 addEventListener('keydown', e => {
+  if (!document.getElementById('nast').hidden || !document.getElementById('sheet').hidden) return;
   if (e.key === 'ArrowDown' || e.key === 'PageDown') { e.preventDefault(); go(cur + 1); }
   if (e.key === 'ArrowUp' || e.key === 'PageUp') { e.preventDefault(); go(cur - 1); }
-  if (e.key === ' ' && items[cur]) { e.preventDefault(); sound() || items[cur].el.classList.toggle('paused', !player.toggle()); }
+  if (e.key === ' ' && items[cur]) { e.preventDefault(); tap(); }
 });
 
 document.addEventListener('visibilitychange', () => { if (document.hidden) player.pause(); });
 
 setInterval(() => {
+  if (document.hidden) return;
   const bar = items[cur]?.el.querySelector('.bar i');
   if (bar) bar.style.transform = `scaleX(${player.progress()})`;
 }, 250);
 
-await pull(); // память с другого устройства, если облако подключено
+// Память с другого устройства. Облако молчит дольше 1,5 с: лента начинает с памятью устройства, облако догонит.
+await Promise.race([pull(), new Promise(r => setTimeout(r, 1500))]);
 fill();

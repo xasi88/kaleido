@@ -1,7 +1,11 @@
-/* Лента: плеер под карточками, карточки листаются (брендбук «Призма», «Части»). */
-/* Широкий экран (Surface, планшет лёжа): ролик 9:16 по центру, кнопки справа от него. --gap: поле сбоку. */
+/* Лента: два плеера под карточками, карточки листаются (брендбук «Призма», «Части»). */
+/* Вид «Меньше и гаснет» (журнал брендбука 2026-11-08): шапки нет, подписи внизу гаснут через 3 с, кнопки остаются. */
+/* Широкий экран (Surface, планшет лёжа, html.wide): ролик 9:16 по центру, подписи в левом поле, кнопки в правом. */
 :root { --gap: max(0px, calc((100vw - 100dvh * 9 / 16) / 2)); }
-.player-box { position: fixed; inset: 0 var(--gap); background: var(--bg); }
+/* Два плеера (player.js): виден один, второй грузит следующий ролик. Обычный ролик 16:9 во всю ширину. */
+.player-box { position: fixed; inset: 0 var(--gap); background: var(--bg); opacity: 0; }
+.player-box.on { opacity: 1; }
+.player-box.l { inset: 0; }
 .player-box iframe { width: 100%; height: 100%; border: 0; }
 
 #feed {
@@ -16,13 +20,15 @@
   scroll-snap-align: start; scroll-snap-stop: always;
   --c: var(--t1); --c2: var(--t2);
 }
+.slide.l { --gap: 0px; }
 .thumb {
   position: absolute; inset: 0 var(--gap);
   background: var(--bg) center / cover no-repeat;
   transition: opacity var(--move);
 }
+.slide.l .thumb { background-size: contain; }
 .slide.live .thumb { opacity: 0; }
-.shade { position: absolute; left: var(--gap); right: var(--gap); bottom: 0; height: 45%; background: linear-gradient(transparent, var(--shade)); pointer-events: none; }
+.shade { position: absolute; left: var(--gap); right: var(--gap); bottom: 0; height: 40%; background: linear-gradient(transparent, var(--shade)); pointer-events: none; transition: opacity var(--move); }
 
 .pp {
   position: absolute; left: 50%; top: 50%; width: 72px; height: 72px; margin: -36px 0 0 -36px;
@@ -33,7 +39,7 @@
 .slide.paused .pp { opacity: 1; transform: none; }
 
 .side {
-  position: absolute; right: max(var(--s3), calc(var(--gap) - 72px)); bottom: calc(160px + env(safe-area-inset-bottom));
+  position: absolute; right: max(var(--s3), calc(var(--gap) - 72px)); bottom: calc(88px + env(safe-area-inset-bottom));
   display: flex; flex-direction: column; gap: var(--s3); align-items: center;
 }
 .act {
@@ -41,7 +47,7 @@
   font-size: 11px; font-weight: 600; color: var(--text); text-decoration: none; min-width: 56px;
 }
 .act i {
-  width: var(--btn); height: var(--btn); border-radius: 50%; background: var(--scrim);
+  position: relative; width: var(--btn); height: var(--btn); border-radius: 50%; background: var(--scrim);
   display: grid; place-items: center;
   transition: transform var(--move) cubic-bezier(.3, 1.6, .5, 1);
 }
@@ -50,14 +56,27 @@
 .act.on svg { fill: var(--c); stroke: var(--c); }
 .act.on i { animation: like-pop var(--move) cubic-bezier(.3, 1.6, .5, 1); }
 @keyframes like-pop { 50% { transform: scale(1.15); } }
+/* Новая версия ещё не открыта: точка на «Настройках» */
+.unseen .act[data-a="nastr"] i::after { content: ''; position: absolute; top: 4px; right: 4px; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
 
-.info { position: absolute; left: calc(var(--gap) + var(--s4)); right: calc(var(--gap) + 84px); bottom: calc(var(--s6) + env(safe-area-inset-bottom)); }
-.chips { display: flex; flex-wrap: wrap; gap: var(--s2); }
-.chip { font-size: 13px; font-weight: 600; color: var(--on-color); background: var(--c); padding: var(--s1) var(--s2); border-radius: var(--r-chip); }
-.chip + .chip { background: var(--c2); }
-.ttl { font-size: 15px; line-height: 20px; margin-top: var(--s2); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.ch { font-size: 13px; color: var(--muted); margin-top: var(--s1); }
-.why { font-size: 12px; color: var(--accent); margin-top: var(--s2); }
+/* Подписи: название и «почему» над строкой «тема, канал». Гаснут вместе с тенью. */
+.info { position: absolute; left: calc(var(--gap) + var(--s4)); right: calc(var(--gap) + 84px); bottom: calc(var(--s4) + env(safe-area-inset-bottom)); transition: opacity var(--move); }
+.slide.calm .info, .slide.calm .shade { opacity: 0; }
+.ttl { font-size: 15px; line-height: 20px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.why { font-size: 12px; color: var(--accent); margin-top: var(--s1); }
+.line { display: flex; align-items: center; gap: var(--s2); margin-top: var(--s2); font-size: 13px; color: var(--muted); min-width: 0; }
+.chip { flex: none; font-size: 12px; font-weight: 600; color: var(--on-color); background: var(--c); padding: 2px var(--s2); border-radius: var(--r-chip); }
+.chip.g { display: none; }
+.ch { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+
+/* Широкий экран: подписи в левом поле, поверх ролика ничего нет, гаснуть не нужно */
+.wide .slide:not(.l) .info { left: var(--s6); right: auto; width: calc(var(--gap) - 48px); max-width: 360px; bottom: 48px; }
+.wide .slide:not(.l).calm .info { opacity: 1; }
+.wide .slide:not(.l) .shade { display: none; }
+.wide .slide:not(.l) .ttl { font-size: 17px; line-height: 23px; -webkit-line-clamp: 4; }
+.wide .slide:not(.l) .line { flex-wrap: wrap; }
+.wide .slide:not(.l) .chip.g { display: block; }
+.wide .slide:not(.l) .chip.g + .chip { background: var(--c2); }
 
 .bar { position: absolute; left: var(--gap); right: var(--gap); bottom: 0; height: 4px; background: var(--track); }
 .bar i { display: block; height: 100%; background: var(--c); transform-origin: left; transform: scaleX(0); }
@@ -67,26 +86,8 @@
 .wait p { color: var(--muted); }
 .main { height: 48px; padding: 0 var(--s6); border-radius: var(--r-chip); background: var(--accent); color: var(--on-color); font-weight: 600; }
 
-.top {
-  position: fixed; top: 0; left: 0; right: 0; z-index: 2;
-  display: flex; align-items: center; justify-content: space-between;
-  padding: calc(var(--s2) + env(safe-area-inset-top)) var(--s4) var(--s4);
-  background: linear-gradient(var(--shade), transparent); /* название ролика от YouTube не мешает шапке */
-  pointer-events: none;
-}
-.top > * { pointer-events: auto; }
-.brand { display: flex; align-items: center; gap: var(--s2); font-size: 18px; font-weight: 800; }
-.brand img { width: 28px; height: 26px; }
-.tools { display: flex; gap: var(--s2); }
-.pill { position: relative; display: flex; align-items: center; gap: var(--s1); height: 44px; padding: 0 var(--s3); border-radius: var(--r-chip); background: var(--scrim); font-size: 13px; font-weight: 600; }
-.pill[hidden] { display: none; }
-.pill.ico { width: 44px; padding: 0; justify-content: center; }
-.pill svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.pill.dot::after { content: ''; position: absolute; top: 8px; right: 8px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
-@media (max-width: 359px) { .brand span { display: none; } }
-
 .hint {
-  position: fixed; z-index: 2; left: 50%; top: calc(64px + env(safe-area-inset-top)); transform: translateX(-50%);
+  position: fixed; z-index: 2; left: 50%; top: calc(var(--s4) + env(safe-area-inset-top)); transform: translateX(-50%);
   display: flex; align-items: center; gap: var(--s2); height: 44px; padding: 0 var(--s4);
   border-radius: var(--r-chip); background: var(--scrim); font-size: 13px; font-weight: 600; white-space: nowrap;
 }

@@ -13,28 +13,24 @@
 <link rel="icon" href="img/znak.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="img/icon-180.png">
 <link rel="manifest" href="manifest.webmanifest">
+<link rel="preconnect" href="https://kaleido-api.gmarbigm.workers.dev" crossorigin>
+<link rel="preconnect" href="https://www.youtube.com">
+<link rel="preconnect" href="https://i.ytimg.com">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Geologica:wght@400;600;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="base.css?v=54b72f24">
-<link rel="stylesheet" href="css/lenta.css?v=54b72f24">
-<link rel="stylesheet" href="css/list.css?v=54b72f24">
-<link rel="stylesheet" href="css/nastroiki.css?v=54b72f24">
+<link href="https://fonts.googleapis.com/css2?family=Geologica:wght@400;600;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<link rel="stylesheet" href="base.css?v=91578ed6">
+<link rel="stylesheet" href="css/lenta.css?v=91578ed6">
+<link rel="stylesheet" href="css/list.css?v=91578ed6">
+<link rel="stylesheet" href="css/nastroiki.css?v=91578ed6">
 </head>
 <body>
-<div class="player-box"><div id="player"></div></div>
+<div class="player-box"><div></div></div>
+<div class="player-box"><div></div></div>
 
 <main id="feed">
   <section class="slide msg wait"><p>Подбираю ролики</p></section>
 </main>
-
-<header class="top">
-  <div class="brand"><img src="img/znak.svg" alt=""><span>Калейдоскоп</span></div>
-  <div class="tools">
-    <button class="pill" data-install hidden>Установить</button>
-    <button class="pill ico" id="nastr" aria-label="Настройки"></button>
-  </div>
-</header>
 
 <button class="hint" id="hint"></button>
 
@@ -54,6 +50,15 @@
   </div>
 </div>
 
-<script type="module" src="js/lenta.js?v=54b72f24"></script>
+<script>
+// Лента не загрузилась (файл не дошёл, например через VPN): сообщение и «Обновить» вместо вечного «Подбираю ролики»
+function kaleidoFail() {
+  var w = document.querySelector('.wait');
+  if (!w || window.kaleido) return;
+  w.innerHTML = '<p>Лента не загрузилась. Проверьте VPN и обновите страницу.</p><button class="main" onclick="location.reload()">Обновить</button>';
+}
+setTimeout(kaleidoFail, 20000);
+</script>
+<script type="module" src="js/lenta.js?v=91578ed6" onerror="kaleidoFail()"></script>
 </body>
 </html>

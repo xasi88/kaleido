@@ -1,22 +1,19 @@
-// Настройки (админка ленты): язык, страна, темы, «Что я смотрю», облако, приложение, «Начать заново».
-// Язык, страна и темы копятся в черновике. Лист закрылся и черновик другой: событие kaleido:cfg, его ловит lenta.js.
-import { TOPICS, GROUPS } from './topics.js?v=54b72f24';
-import { LANGS, COUNTRIES } from './strany.js?v=54b72f24';
-import { VERSIONS } from './versions.js?v=54b72f24';
-import * as P from './podbor.js?v=54b72f24';
-import { st, save } from './pamyat.js?v=54b72f24';
-import * as cloud from './oblako.js?v=54b72f24';
-import * as app from './ustanovka.js?v=54b72f24';
-import * as novoe from './novoe.js?v=54b72f24';
-import { ICON } from './icons.js?v=54b72f24';
+// Настройки (админка ленты): язык, «Только на русском», вид роликов, страна, темы, «Что я смотрю», облако, приложение, «Начать заново».
+// Язык, вид, страна и темы копятся в черновике. Лист закрылся и черновик другой: событие kaleido:cfg, его ловит lenta.js.
+import { TOPICS, GROUPS } from './topics.js?v=91578ed6';
+import { LANGS, COUNTRIES } from './strany.js?v=91578ed6';
+import { VERSIONS } from './versions.js?v=91578ed6';
+import * as P from './podbor.js?v=91578ed6';
+import { st, save } from './pamyat.js?v=91578ed6';
+import * as cloud from './oblako.js?v=91578ed6';
+import * as app from './ustanovka.js?v=91578ed6';
+import * as novoe from './novoe.js?v=91578ed6';
 
+const FORMATS = [['', 'Короткие'], ['l', 'Обычные'], ['a', 'Все']];
 const sheet = document.getElementById('nast');
 const body = document.getElementById('nast-body');
-const btn = document.getElementById('nastr');
 let draft = null;
 
-btn.innerHTML = ICON.gear;
-for (const b of document.querySelectorAll('.top [data-install]')) b.innerHTML = ICON.down + 'Установить';
 
 const el = (tag, cls, text) => {
   const e = document.createElement(tag);
@@ -42,14 +39,30 @@ function pick(box, list, key) {
   const wrap = el('div', 'opts');
   for (const [v, name] of list) {
     const b = el('button', 'opt', name);
+    b.dataset.v = v;
     b.setAttribute('aria-pressed', String(draft[key] === v));
     b.onclick = () => {
       draft[key] = v;
       for (const x of wrap.children) x.setAttribute('aria-pressed', String(x === b));
+      if (key === 'lang' && v !== 'ru' && draft.ru) { draft.ru = false; ruBtn?.setAttribute('aria-pressed', 'false'); }
     };
     wrap.append(b);
   }
   box.append(wrap);
+  return wrap;
+}
+
+// «Только на русском»: ролики с русским названием и русским звуком. Включает язык «Русский».
+let ruBtn = null;
+function onlyRu(box, langs) {
+  ruBtn = el('button', 'opt', 'Только на русском');
+  ruBtn.setAttribute('aria-pressed', String(draft.ru));
+  ruBtn.onclick = () => {
+    draft.ru = !draft.ru;
+    ruBtn.setAttribute('aria-pressed', String(draft.ru));
+    if (draft.ru) { draft.lang = 'ru'; for (const x of langs.children) x.setAttribute('aria-pressed', String(x.dataset.v === 'ru')); }
+  };
+  box.append(ruBtn, note('Строгий фильтр: ролики на других языках не приходят. Тем с русскими роликами меньше.'));
 }
 
 function topics(box) {
@@ -165,8 +178,12 @@ function zanovo(box) {
 function render() {
   body.textContent = '';
   const lang = part('Язык роликов');
-  pick(lang, LANGS, 'lang');
+  const langs = pick(lang, LANGS, 'lang');
   lang.append(note('«Любой»: ролики со всего мира. Язык: YouTube ищет ролики на этом языке.'));
+  onlyRu(lang, langs);
+  const fmt = part('Вид роликов');
+  pick(fmt, FORMATS, 'fmt');
+  fmt.append(note('Короткие: вертикальные, до минуты. Обычные: больше 4 минут, экран лёжа.'));
   const reg = part('Страна');
   pick(reg, COUNTRIES, 'reg');
   reg.append(note('YouTube покажет ролики, которые смотрят в этой стране.'));
@@ -178,7 +195,7 @@ function render() {
 }
 
 export function open() {
-  draft = { off: [...st.cfg.off], lang: st.cfg.lang, reg: st.cfg.reg };
+  draft = { off: [...st.cfg.off], lang: st.cfg.lang, reg: st.cfg.reg, fmt: st.cfg.fmt || '', ru: !!st.cfg.ru };
   render();
   sheet.hidden = false;
   body.parentElement.scrollTop = 0;
@@ -188,7 +205,7 @@ export function open() {
 function close() {
   if (!draft) return;
   const was = st.cfg;
-  const same = draft.lang === was.lang && draft.reg === was.reg
+  const same = draft.lang === was.lang && draft.reg === was.reg && draft.fmt === (was.fmt || '') && draft.ru === !!was.ru
     && draft.off.length === was.off.length && draft.off.every(x => was.off.includes(x));
   if (!same) dispatchEvent(new CustomEvent('kaleido:cfg', { detail: draft }));
   draft = null;
@@ -196,8 +213,8 @@ function close() {
   setTimeout(() => { sheet.hidden = true; }, 250);
 }
 
-const dot = () => btn.classList.toggle('dot', novoe.unseen());
-btn.addEventListener('click', open);
+// Новая версия ещё не открыта: точка на кнопке «Настройки» у каждого ролика (lenta.css, html.unseen)
+const dot = () => document.documentElement.classList.toggle('unseen', novoe.unseen());
 sheet.addEventListener('click', e => { if (e.target.closest('[data-close]')) close(); });
 addEventListener('keydown', e => { if (e.key === 'Escape' && !sheet.hidden && document.getElementById('sheet').hidden) close(); });
 addEventListener('kaleido:seen', dot);

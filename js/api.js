@@ -1,11 +1,13 @@
 // Запрос к посреднику kaleido-api (worker/). Ключа YouTube здесь нет: он только в посреднике.
 export const API = 'https://kaleido-api.gmarbigm.workers.dev/';
 
-// cfg: язык и страна из настроек (strany.js), пусто: весь мир
+// cfg: язык и страна из настроек (strany.js), пусто: весь мир. fmt: вид роликов, ru: только на русском (worker/src/russkij.js)
 export async function fetchTopic(id, o, cfg = {}) {
   const q = new URLSearchParams({ t: id, o });
   if (cfg.lang) q.set('l', cfg.lang);
   if (cfg.reg) q.set('r', cfg.reg);
+  if (cfg.fmt) q.set('f', cfg.fmt);
+  if (cfg.ru) { q.set('l', 'ru'); q.set('s', '1'); }
   let r;
   try { r = await fetch(API + '?' + q); } catch (e) { throw new Error('net'); }
   const j = await r.json().catch(() => ({}));
@@ -16,5 +18,5 @@ export async function fetchTopic(id, o, cfg = {}) {
   }
   return (j.v || [])
     .filter(([vid]) => /^[\w-]{11}$/.test(vid))
-    .map(([vid, title, ch]) => ({ id: vid, title, ch }));
+    .map(([vid, title, ch, l]) => (l ? { id: vid, title, ch, l: 1 } : { id: vid, title, ch })); // l: обычный ролик 16:9
 }
