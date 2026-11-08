@@ -1,6 +1,6 @@
 // Подбор ролика: какая тема следующая, без повторов, учёба на досмотрах.
 // Без DOM и без памяти телефона: всё состояние в объекте st (его хранит pamyat.js). Тесты: tests/podbor.test.mjs.
-import { TOPICS, TOPIC, GROUPS } from './topics.js?v=91578ed6';
+import { TOPICS, TOPIC, GROUPS } from './topics.js?v=69e8333c';
 
 export const EXPLORE_EVERY = 3; // каждый третий ролик из новой темы
 // Выдачи темы не кончаются: 0-3 поиск, дальше полки каналов (worker/src/roliki.js). Пустая выдача: тема кончилась.
@@ -130,7 +130,9 @@ export async function nextItem(st, fetchFn, force, rnd = Math.random) {
     }
     if (v) { shown(st, id, v.id); return { v, topic, why: force === 'new' && i === 0 ? 'new' : why }; }
   }
-  if (limited) throw new Error('limit');
+  // Темы не кончились, а ждут после лимита: это лимит, а не «темы кончились»
+  const now = Date.now();
+  if (limited || Object.values(st.wait || {}).some(x => x > now - WAIT)) throw new Error('limit');
   return null;
 }
 

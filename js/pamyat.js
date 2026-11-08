@@ -1,7 +1,7 @@
 // Память ленты: что показано, что нравится, настройки. Лежит на устройстве и в облаке (oblako.js).
 // Без памяти устройства (частный режим) лента тоже работает.
-import { fresh, merge } from './podbor.js?v=91578ed6';
-import * as cloud from './oblako.js?v=91578ed6';
+import { fresh, merge } from './podbor.js?v=69e8333c';
+import * as cloud from './oblako.js?v=69e8333c';
 
 const KEY = 'kaleido.v1';
 const EVERY = 60000; // в облако не чаще раза в минуту: лимит записей Cloudflare KV

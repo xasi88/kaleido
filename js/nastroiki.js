@@ -1,13 +1,13 @@
 // Настройки (админка ленты): язык, «Только на русском», вид роликов, страна, темы, «Что я смотрю», облако, приложение, «Начать заново».
 // Язык, вид, страна и темы копятся в черновике. Лист закрылся и черновик другой: событие kaleido:cfg, его ловит lenta.js.
-import { TOPICS, GROUPS } from './topics.js?v=91578ed6';
-import { LANGS, COUNTRIES } from './strany.js?v=91578ed6';
-import { VERSIONS } from './versions.js?v=91578ed6';
-import * as P from './podbor.js?v=91578ed6';
-import { st, save } from './pamyat.js?v=91578ed6';
-import * as cloud from './oblako.js?v=91578ed6';
-import * as app from './ustanovka.js?v=91578ed6';
-import * as novoe from './novoe.js?v=91578ed6';
+import { TOPICS, GROUPS } from './topics.js?v=69e8333c';
+import { LANGS, COUNTRIES } from './strany.js?v=69e8333c';
+import { VERSIONS } from './versions.js?v=69e8333c';
+import * as P from './podbor.js?v=69e8333c';
+import { st, save } from './pamyat.js?v=69e8333c';
+import * as cloud from './oblako.js?v=69e8333c';
+import * as app from './ustanovka.js?v=69e8333c';
+import * as novoe from './novoe.js?v=69e8333c';
 
 const FORMATS = [['', 'Короткие'], ['l', 'Обычные'], ['a', 'Все']];
 const sheet = document.getElementById('nast');

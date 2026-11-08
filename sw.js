@@ -1,7 +1,7 @@
 // Помощник приложения: с ним Chrome ставит ленту как приложение на Surface и планшет.
 // Файлы всегда берёт из сети, без сети показывает offline.html. Своих роликов не хранит.
 // Номер V равен версии в js/versions.js (тест). Удаляет только свои старые копии: адрес общий с другими приложениями.
-const V = 'kaleido-0.5';
+const V = 'kaleido-0.6';
 const KEEP = ['offline.html', 'base.css', 'img/znak.svg'];
 
 self.addEventListener('install', e => {

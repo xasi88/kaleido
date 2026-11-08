@@ -1,13 +1,13 @@
 // Лента: карточки роликов поверх плеера, листание, кнопки, учёба подбора.
 // Вид «Меньше и гаснет» (брендбук, журнал 2026-11-08): шапки нет, подписи гаснут через 3 с, касание показывает их снова.
-import { GROUPS } from './topics.js?v=91578ed6';
-import * as P from './podbor.js?v=91578ed6';
-import { st, save, pull } from './pamyat.js?v=91578ed6';
-import { fetchTopic } from './api.js?v=91578ed6';
-import * as player from './player.js?v=91578ed6';
-import { ICON } from './icons.js?v=91578ed6';
-import './ustanovka.js?v=91578ed6';
-import * as nastroiki from './nastroiki.js?v=91578ed6';
+import { GROUPS } from './topics.js?v=69e8333c';
+import * as P from './podbor.js?v=69e8333c';
+import { st, save, pull } from './pamyat.js?v=69e8333c';
+import { fetchTopic } from './api.js?v=69e8333c';
+import * as player from './player.js?v=69e8333c';
+import { ICON } from './icons.js?v=69e8333c';
+import './ustanovka.js?v=69e8333c';
+import * as nastroiki from './nastroiki.js?v=69e8333c';
 
 window.kaleido = 1; // лента загрузилась (index.html, kaleidoFail)
 const AHEAD = 2; // сколько роликов держать готовыми впереди
@@ -29,6 +29,7 @@ const WHY = {
 };
 const STOP = {
   limit: 'Лимит YouTube на сегодня кончился. Лента вернётся завтра.',
+  limitRu: 'Русских роликов сейчас нет: лимит YouTube. Выключите «Только на русском» в настройках или зайдите завтра.',
   net: 'Нет связи с YouTube. Проверьте VPN и обновите страницу.',
   empty: 'Темы кончились или выключены. Включите темы или выберите другой язык в настройках.',
 };
@@ -78,11 +79,21 @@ function stop(kind) {
   document.querySelector('.wait')?.remove();
   const el = document.createElement('section');
   el.className = 'slide msg';
-  el.innerHTML = '<p></p><button class="main"></button>';
+  el.innerHTML = '<p></p>';
   el.querySelector('p').textContent = STOP[kind];
-  const b = el.querySelector('button');
-  b.textContent = kind === 'empty' ? 'Настройки' : 'Обновить';
-  b.onclick = kind === 'empty' ? nastroiki.open : () => location.reload();
+  // Выход в настройки есть всегда: без него «лимит» с фильтром «только на русском» запирал ленту (автор 2026-11-08)
+  const btn = (text, cls, fn) => {
+    const b = document.createElement('button');
+    b.className = cls;
+    b.textContent = text;
+    b.onclick = fn;
+    el.append(b);
+  };
+  const reload = () => location.reload();
+  if (kind === 'empty' || kind === 'limitRu') btn('Настройки', 'main', nastroiki.open);
+  else btn('Обновить', 'main', reload);
+  if (kind === 'limitRu') btn('Обновить', 'sec', reload);
+  if (kind === 'limit' || kind === 'net') btn('Настройки', 'sec', nastroiki.open);
   feed.append(el);
 }
 
@@ -106,7 +117,7 @@ async function run() {
       document.querySelector('.wait')?.remove();
     }
   } catch (e) {
-    stop(e.message === 'limit' ? 'limit' : 'net');
+    stop(e.message !== 'limit' ? 'net' : st.cfg.ru ? 'limitRu' : 'limit');
   }
   warm();
 }
