@@ -9,5 +9,9 @@ export const ICON = {
   play: svg('<path d="M8 5v14l11-7Z"/>'),
   gear: svg('<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>'),
   down: svg('<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>'),
+  // Подборки: открытая книга, скобки кода, экран с антенной. Без людей и звёзд (общие запреты автора)
+  islam: svg('<path d="M12 6.5C10 5 7 4.5 4 5v13c3-.5 6 0 8 1.5 2-1.5 5-2 8-1.5V5c-3-.5-6 0-8 1.5Z"/><path d="M12 6.5v13"/>'),
+  ai: svg('<path d="M8 8l-4 4 4 4M16 8l4 4-4 4M13.5 5.5l-3 13"/>'),
+  fun: svg('<rect x="3" y="8" width="18" height="12" rx="2"/><path d="M8 3.5l4 4.5 4-4.5"/>'),
   sound: svg('<path d="M4 9v6h4l5 4V5L8 9Z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/>'),
 };

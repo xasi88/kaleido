@@ -1,13 +1,13 @@
 // Лента: карточки роликов поверх плеера, листание, кнопки, учёба подбора.
 // Вид «Меньше и гаснет» (брендбук, журнал 2026-11-08): шапки нет, подписи гаснут через 3 с, касание показывает их снова.
-import { GROUPS } from './topics.js?v=69e8333c';
-import * as P from './podbor.js?v=69e8333c';
-import { st, save, pull } from './pamyat.js?v=69e8333c';
-import { fetchTopic } from './api.js?v=69e8333c';
-import * as player from './player.js?v=69e8333c';
-import { ICON } from './icons.js?v=69e8333c';
-import './ustanovka.js?v=69e8333c';
-import * as nastroiki from './nastroiki.js?v=69e8333c';
+import { NAMES, PODBORKI } from './topics.js?v=e6702a6c';
+import * as P from './podbor.js?v=e6702a6c';
+import { st, save, pull } from './pamyat.js?v=e6702a6c';
+import { fetchTopic } from './api.js?v=e6702a6c';
+import * as player from './player.js?v=e6702a6c';
+import { ICON } from './icons.js?v=e6702a6c';
+import './ustanovka.js?v=e6702a6c';
+import * as nastroiki from './nastroiki.js?v=e6702a6c';
 
 window.kaleido = 1; // лента загрузилась (index.html, kaleidoFail)
 const AHEAD = 2; // сколько роликов держать готовыми впереди
@@ -24,7 +24,7 @@ let hideT = 0;
 
 const WHY = {
   new: () => 'Новая тема',
-  like: g => 'Вам нравится: ' + GROUPS[g].toLowerCase(),
+  like: g => 'Вам нравится: ' + NAMES[g].toLowerCase(),
   random: () => 'Случайная тема',
 };
 const STOP = {
@@ -32,7 +32,12 @@ const STOP = {
   limitRu: 'Русских роликов сейчас нет: лимит YouTube. Выключите «Только на русском» в настройках или зайдите завтра.',
   net: 'Нет связи с YouTube. Проверьте VPN и обновите страницу.',
   empty: 'Темы кончились или выключены. Включите темы или выберите другой язык в настройках.',
+  pod: p => `В подборке «${PODBORKI[p]}» пока нет роликов.`,
+  podLimit: p => `В подборке «${PODBORKI[p]}» сейчас нет роликов: лимит YouTube. Загляните позже.`,
 };
+// Подборки слева (просьба автора 2026-11-08): подпись под кнопкой и значок
+const POD = { islam: 'Ислам', ai: 'AI', fun: 'Развлечения' };
+const pods = () => Object.keys(PODBORKI).map(p => `<button class="act pod${st.cfg.pod === p ? ' on' : ''}" data-a="pod" data-p="${p}" aria-pressed="${st.cfg.pod === p}" aria-label="Подборка ${PODBORKI[p]}"><i>${ICON[p]}</i>${POD[p]}</button>`).join('');
 
 hint.innerHTML = ICON.sound + 'Звук: коснитесь экрана';
 
@@ -54,6 +59,7 @@ function slide(it) {
     <div class="thumb" style="background-image:url(https://i.ytimg.com/vi/${it.v.id}/${pic}.jpg)"></div>
     <div class="shade"></div>
     <div class="pp">${ICON.play}</div>
+    <div class="side pods">${pods()}</div>
     <div class="side">
       <button class="act" data-a="nastr"><i>${ICON.gear}</i>Настройки</button>
       <button class="act" data-a="like"><i>${ICON.heart}</i>Ещё такое</button>
@@ -66,7 +72,7 @@ function slide(it) {
       <p class="line"><span class="chip g"></span><span class="chip t"></span><span class="ch"></span></p>
     </div>
     <div class="bar"><i></i></div>`;
-  el.querySelector('.chip.g').textContent = GROUPS[g];
+  el.querySelector('.chip.g').textContent = NAMES[g];
   el.querySelector('.chip.t').textContent = it.topic[2];
   el.querySelector('.ttl').textContent = it.v.title;
   el.querySelector('.ch').textContent = it.v.ch;
@@ -80,7 +86,8 @@ function stop(kind) {
   const el = document.createElement('section');
   el.className = 'slide msg';
   el.innerHTML = '<p></p>';
-  el.querySelector('p').textContent = STOP[kind];
+  const pod = PODBORKI[st.cfg.pod] ? st.cfg.pod : '';
+  el.querySelector('p').textContent = pod && kind !== 'net' ? STOP[kind.startsWith('limit') ? 'podLimit' : 'pod'](pod) : STOP[kind];
   // Выход в настройки есть всегда: без него «лимит» с фильтром «только на русском» запирал ленту (автор 2026-11-08)
   const btn = (text, cls, fn) => {
     const b = document.createElement('button');
@@ -90,6 +97,8 @@ function stop(kind) {
     el.append(b);
   };
   const reload = () => location.reload();
+  // В подборке выход всегда один: обычная лента
+  if (pod) { btn('Обычная лента', 'main', () => setPod('')); btn('Обновить', 'sec', reload); feed.append(el); return; }
   if (kind === 'empty' || kind === 'limitRu') btn('Настройки', 'main', nastroiki.open);
   else btn('Обновить', 'main', reload);
   if (kind === 'limitRu') btn('Обновить', 'sec', reload);
@@ -179,6 +188,23 @@ function dropAhead() {
   for (const it of items.splice(cur + 1)) { P.putBack(st, it); watch.unobserve(it.el); it.el.remove(); }
 }
 
+// Подборка (кнопки слева): нажали: лента идёт в подборку, ещё раз: обычная лента. Ролик на экране остаётся.
+async function setPod(p) {
+  await filling;
+  dropAhead();
+  P.setCfg(st, { pod: p });
+  save(true);
+  for (const b of feed.querySelectorAll('.act.pod')) {
+    b.classList.toggle('on', b.dataset.p === p);
+    b.setAttribute('aria-pressed', String(b.dataset.p === p));
+  }
+  for (const m of feed.querySelectorAll('.slide.msg')) m.remove();
+  stopped = false;
+  wantNew = true;
+  await fill();
+  if (cur < 0 && items[0]) activate(0); else go(cur + 1);
+}
+
 async function newTopic() {
   await filling;
   dropAhead();
@@ -233,6 +259,7 @@ feed.addEventListener('click', e => {
   }
   if (a === 'less') { own.less = true; P.learn(st, own.topic[0], -1); P.ban(st, own.v.ch); save(); go(cur + 1); }
   if (a === 'new') newTopic();
+  if (a === 'pod') setPod(st.cfg.pod === b.dataset.p ? '' : b.dataset.p);
   if (a === 'out') player.pause();
 });
 

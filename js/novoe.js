@@ -1,5 +1,5 @@
 // Лист «Что нового»: версии из versions.js. Новая версия ещё не открыта: точка на кнопке настроек.
-import { VERSIONS } from './versions.js?v=69e8333c';
+import { VERSIONS } from './versions.js?v=e6702a6c';
 
 const KEY = 'kaleido.ver';
 const sheet = document.getElementById('sheet');

@@ -56,6 +56,11 @@
 .act.on svg { fill: var(--c); stroke: var(--c); }
 .act.on i { animation: like-pop var(--move) cubic-bezier(.3, 1.6, .5, 1); }
 @keyframes like-pop { 50% { transform: scale(1.15); } }
+/* Подборки: столбик слева по середине экрана. Включённая: белый круг, тёмный значок (цвет темы на кнопках не ставим). */
+/* Ширина 76 под подпись «Развлечения»: на широком экране столбик кончается за 16 точек до ролика, как правый */
+.side.pods { width: 76px; left: max(var(--s3), calc(var(--gap) - 92px)); right: auto; top: 50%; bottom: auto; transform: translateY(-50%); }
+.act.pod.on i { background: var(--text); color: var(--on-color); }
+.act.pod.on svg { fill: none; stroke: currentColor; }
 /* Новая версия ещё не открыта: точка на «Настройках» */
 .unseen .act[data-a="nastr"] i::after { content: ''; position: absolute; top: 4px; right: 4px; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
 

@@ -1,27 +1,33 @@
 // Подбор ролика: какая тема следующая, без повторов, учёба на досмотрах.
 // Без DOM и без памяти телефона: всё состояние в объекте st (его хранит pamyat.js). Тесты: tests/podbor.test.mjs.
-import { TOPICS, TOPIC, GROUPS } from './topics.js?v=69e8333c';
+import { TOPICS, TOPIC, GROUPS, PODBORKI, PTOPICS } from './topics.js?v=e6702a6c';
 
 export const EXPLORE_EVERY = 3; // каждый третий ролик из новой темы
 // Выдачи темы не кончаются: 0-3 поиск, дальше полки каналов (worker/src/roliki.js). Пустая выдача: тема кончилась.
 export const WAIT = 3600000;    // тема упёрлась в лимит YouTube: час не выпадает
+export const SPENT = 86400000; // тема кончилась: сутки не выпадает, потом полки с начала (новые ролики, новые каналы)
 export const BAN = 2;           // «Меньше» два раза на роликах канала: канал больше не показывается
 const SEEN_MAX = 5000;
-const GROUP_IDS = Object.keys(GROUPS);
+const GROUP_IDS = [...Object.keys(GROUPS), ...Object.keys(PODBORKI)];
+
+// Темы, из которых сейчас идёт лента: подборка (cfg.pod, кнопки слева) или обычные темы
+export const topicsOf = st => (PODBORKI[st.cfg?.pod] ? PTOPICS.filter(t => t[1] === st.cfg.pod) : TOPICS);
 
 // Цвет группы по кругу из шести цветов брендбука: 't1'...'t6'
 export const color = (g, shift = 0) => 't' + ((GROUP_IDS.indexOf(g) + shift) % 6 + 1);
 
-// cfg: настройки (выключенные темы, язык, страна, вид роликов fmt: '' короткие, 'l' обычные, 'a' все; ru: только на русском),
+// cfg: настройки (выключенные темы, язык, страна, вид роликов fmt: '' короткие, 'l' обычные, 'a' все; ru: только на русском;
+// pod: подборка или пусто),
 // at: время записи, r: время «Начать заново»
 export const fresh = () => ({
   n: 0, seen: {}, g: {}, t: {}, pools: {}, orders: {}, spent: {}, wait: {}, ban: {}, last: [], at: 0, r: 0,
-  cfg: { off: [], lang: '', reg: '', fmt: '', ru: false, at: 0 },
+  cfg: { off: [], lang: '', reg: '', fmt: '', ru: false, pod: '', at: 0 },
 });
 
 const score = (o, id) => (o[id] ? o[id].s : 0);
 const shows = (o, id) => (o[id] ? o[id].k : 0);
 const one = (list, rnd) => list[Math.floor(rnd() * list.length)];
+const isSpent = (st, id, now) => (st.spent[id] || 0) > now - SPENT;
 
 export const isExplore = st => st.n % EXPLORE_EVERY === EXPLORE_EVERY - 1;
 
@@ -30,8 +36,10 @@ export function pickTopic(st, rnd = Math.random, force) {
   const lastGroup = st.last.length ? TOPIC[st.last[st.last.length - 1]]?.[1] : null;
   const off = new Set(st.cfg?.off || []);
   const now = Date.now();
-  const open = TOPICS.filter(t => !st.spent[t[0]] && !off.has(t[0]) && !((st.wait?.[t[0]] || 0) > now - WAIT));
-  let cand = open.filter(t => !lastIds.includes(t[0]) && t[1] !== lastGroup);
+  const pod = !!PODBORKI[st.cfg?.pod];
+  const open = topicsOf(st).filter(t => !isSpent(st, t[0], now) && !off.has(t[0]) && !((st.wait?.[t[0]] || 0) > now - WAIT));
+  // В подборке одна группа: правило «группа не два раза подряд» не действует
+  let cand = open.filter(t => !lastIds.includes(t[0]) && (pod || t[1] !== lastGroup));
   if (!cand.length) cand = open;
   if (!cand.length) return { topic: null, why: null };
 
@@ -110,7 +118,8 @@ export async function nextItem(st, fetchFn, force, rnd = Math.random) {
     if (!topic) break;
     const id = topic[0];
     let v = take(st, id);
-    if (!v && !st.spent[id]) {
+    if (!v && !isSpent(st, id, Date.now())) {
+      if (st.spent[id]) { delete st.spent[id]; st.orders[id] = 0; } // сутки прошли: выдачи темы с начала
       const o = st.orders[id] || 0;
       let list;
       try {
@@ -120,19 +129,19 @@ export async function nextItem(st, fetchFn, force, rnd = Math.random) {
         const wait = st.wait || (st.wait = {});
         wait[id] = Date.now();
         // Посредник назвал темы с каналами: остальные темы тоже ждут, лента не перебирает их по одной
-        if (e.ready) for (const t of TOPICS) if (!e.ready.includes(t[0]) && !st.pools[t[0]]?.length) wait[t[0]] = Date.now();
+        if (e.ready) for (const t of topicsOf(st)) if (!e.ready.includes(t[0]) && !st.pools[t[0]]?.length) wait[t[0]] = Date.now();
         limited++;
         continue;
       }
       add(st, id, list, o);
-      if (!list.length) st.spent[id] = 1;
+      if (!list.length) st.spent[id] = Date.now();
       v = take(st, id);
     }
     if (v) { shown(st, id, v.id); return { v, topic, why: force === 'new' && i === 0 ? 'new' : why }; }
   }
   // Темы не кончились, а ждут после лимита: это лимит, а не «темы кончились»
   const now = Date.now();
-  if (limited || Object.values(st.wait || {}).some(x => x > now - WAIT)) throw new Error('limit');
+  if (limited || topicsOf(st).some(t => (st.wait?.[t[0]] || 0) > now - WAIT)) throw new Error('limit');
   return null;
 }
 

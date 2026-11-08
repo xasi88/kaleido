@@ -1,13 +1,13 @@
 // Настройки (админка ленты): язык, «Только на русском», вид роликов, страна, темы, «Что я смотрю», облако, приложение, «Начать заново».
 // Язык, вид, страна и темы копятся в черновике. Лист закрылся и черновик другой: событие kaleido:cfg, его ловит lenta.js.
-import { TOPICS, GROUPS } from './topics.js?v=69e8333c';
-import { LANGS, COUNTRIES } from './strany.js?v=69e8333c';
-import { VERSIONS } from './versions.js?v=69e8333c';
-import * as P from './podbor.js?v=69e8333c';
-import { st, save } from './pamyat.js?v=69e8333c';
-import * as cloud from './oblako.js?v=69e8333c';
-import * as app from './ustanovka.js?v=69e8333c';
-import * as novoe from './novoe.js?v=69e8333c';
+import { TOPICS, GROUPS, NAMES } from './topics.js?v=e6702a6c';
+import { LANGS, COUNTRIES } from './strany.js?v=e6702a6c';
+import { VERSIONS } from './versions.js?v=e6702a6c';
+import * as P from './podbor.js?v=e6702a6c';
+import { st, save } from './pamyat.js?v=e6702a6c';
+import * as cloud from './oblako.js?v=e6702a6c';
+import * as app from './ustanovka.js?v=e6702a6c';
+import * as novoe from './novoe.js?v=e6702a6c';
 
 const FORMATS = [['', 'Короткие'], ['l', 'Обычные'], ['a', 'Все']];
 const sheet = document.getElementById('nast');
@@ -119,7 +119,7 @@ function watched(box) {
     const row = el('div', 'stat');
     row.style.setProperty('--c', `var(--${P.color(x.g)})`);
     row.style.setProperty('--w', Math.round((x.s + 1) * 50) + '%');
-    row.append(el('span', '', GROUPS[x.g]), el('span', 'cnt', `${x.k} ${word(x.k, 'ролик', 'ролика', 'роликов')}`), el('i'));
+    row.append(el('span', '', NAMES[x.g]), el('span', 'cnt', `${x.k} ${word(x.k, 'ролик', 'ролика', 'роликов')}`), el('i'));
     box.append(row);
   }
   if (s.top.length) box.append(note('Любимые темы: ' + s.top.map(x => x.t[2]).join(', ') + '.'));
