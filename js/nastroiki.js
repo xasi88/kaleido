@@ -1,14 +1,14 @@
 // Настройки (админка ленты): язык, страна, темы, «Что я смотрю», облако, приложение, «Начать заново».
 // Язык, страна и темы копятся в черновике. Лист закрылся и черновик другой: событие kaleido:cfg, его ловит lenta.js.
-import { TOPICS, GROUPS } from './topics.js?v=3e4e8503';
-import { LANGS, COUNTRIES } from './strany.js?v=3e4e8503';
-import { VERSIONS } from './versions.js?v=3e4e8503';
-import * as P from './podbor.js?v=3e4e8503';
-import { st, save } from './pamyat.js?v=3e4e8503';
-import * as cloud from './oblako.js?v=3e4e8503';
-import * as app from './ustanovka.js?v=3e4e8503';
-import * as novoe from './novoe.js?v=3e4e8503';
-import { ICON } from './icons.js?v=3e4e8503';
+import { TOPICS, GROUPS } from './topics.js?v=54b72f24';
+import { LANGS, COUNTRIES } from './strany.js?v=54b72f24';
+import { VERSIONS } from './versions.js?v=54b72f24';
+import * as P from './podbor.js?v=54b72f24';
+import { st, save } from './pamyat.js?v=54b72f24';
+import * as cloud from './oblako.js?v=54b72f24';
+import * as app from './ustanovka.js?v=54b72f24';
+import * as novoe from './novoe.js?v=54b72f24';
+import { ICON } from './icons.js?v=54b72f24';
 
 const sheet = document.getElementById('nast');
 const body = document.getElementById('nast-body');

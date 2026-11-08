@@ -15,7 +15,7 @@ window.onYouTubeIframeAPIReady = () => {
       autoplay: 1, controls: 0, playsinline: 1, rel: 0, fs: 0,
       disablekb: 1, iv_load_policy: 3, mute: 1, origin: location.origin,
     },
-    events: { onReady, onStateChange },
+    events: { onReady, onStateChange, onError },
   });
 };
 const s = document.createElement('script');
@@ -26,6 +26,11 @@ function onReady() {
   ready = true;
   if (want) start(want);
 }
+
+// Ролик не играет вне YouTube или удалён (ошибки 100, 101, 150): лента его пропускает
+let onBad = null;
+export const onFail = cb => { onBad = cb; };
+function onError() { if (onBad && want) onBad(want); }
 
 function onStateChange(e) {
   const S = window.YT.PlayerState;

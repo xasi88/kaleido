@@ -1,9 +1,11 @@
 // Подбор ролика: какая тема следующая, без повторов, учёба на досмотрах.
 // Без DOM и без памяти телефона: всё состояние в объекте st (его хранит pamyat.js). Тесты: tests/podbor.test.mjs.
-import { TOPICS, TOPIC, GROUPS } from './topics.js?v=3e4e8503';
+import { TOPICS, TOPIC, GROUPS } from './topics.js?v=54b72f24';
 
 export const EXPLORE_EVERY = 3; // каждый третий ролик из новой темы
-export const ORDERS = 4;        // сколько разных выдач у одной темы (порядок в worker/src/index.js)
+// Выдачи темы не кончаются: 0-3 поиск, дальше полки каналов (worker/src/roliki.js). Пустая выдача: тема кончилась.
+export const WAIT = 3600000;    // тема упёрлась в лимит YouTube: час не выпадает
+export const BAN = 2;           // «Меньше» два раза на роликах канала: канал больше не показывается
 const SEEN_MAX = 5000;
 const GROUP_IDS = Object.keys(GROUPS);
 
@@ -12,7 +14,7 @@ export const color = (g, shift = 0) => 't' + ((GROUP_IDS.indexOf(g) + shift) % 6
 
 // cfg: настройки (выключенные темы, язык, страна), at: время записи, r: время «Начать заново»
 export const fresh = () => ({
-  n: 0, seen: {}, g: {}, t: {}, pools: {}, orders: {}, spent: {}, last: [], at: 0, r: 0,
+  n: 0, seen: {}, g: {}, t: {}, pools: {}, orders: {}, spent: {}, wait: {}, ban: {}, last: [], at: 0, r: 0,
   cfg: { off: [], lang: '', reg: '', at: 0 },
 });
 
@@ -26,7 +28,8 @@ export function pickTopic(st, rnd = Math.random, force) {
   const lastIds = st.last.slice(-3);
   const lastGroup = st.last.length ? TOPIC[st.last[st.last.length - 1]]?.[1] : null;
   const off = new Set(st.cfg?.off || []);
-  const open = TOPICS.filter(t => !st.spent[t[0]] && !off.has(t[0]));
+  const now = Date.now();
+  const open = TOPICS.filter(t => !st.spent[t[0]] && !off.has(t[0]) && !((st.wait?.[t[0]] || 0) > now - WAIT));
   let cand = open.filter(t => !lastIds.includes(t[0]) && t[1] !== lastGroup);
   if (!cand.length) cand = open;
   if (!cand.length) return { topic: null, why: null };
@@ -82,9 +85,8 @@ function take(st, id) {
   const pool = st.pools[id] || [];
   while (pool.length) {
     const v = pool.shift();
-    if (!st.seen[v.id]) return v;
+    if (!st.seen[v.id] && (st.ban?.[v.ch] || 0) < BAN) return v;
   }
-  if ((st.orders[id] || 0) >= ORDERS) st.spent[id] = 1;
   return null;
 }
 
@@ -97,20 +99,44 @@ function add(st, id, list, o) {
 
 // Следующий ролик: {v: {id, title, ch}, topic, why} или null, если темы кончились.
 // fetchFn(id темы, порядок) → [{id, title, ch}]; ошибка «limit» уходит наверх.
+// Лимит YouTube у одной темы: тема ждёт час, лента берёт другую. Лимит у всех попыток: ошибка «limit» наверх.
 export async function nextItem(st, fetchFn, force, rnd = Math.random) {
-  for (let i = 0; i < 8; i++) {
+  let limited = 0;
+  // Тема с лимитом не считается попыткой: она ждёт час и больше не выпадает, лента пробует следующую
+  for (let i = 0; i - limited < 8 && i < 120; i++) {
     const { topic, why } = pickTopic(st, rnd, i === 0 ? force : undefined);
-    if (!topic) return null;
+    if (!topic) break;
     const id = topic[0];
     let v = take(st, id);
     if (!v && !st.spent[id]) {
       const o = st.orders[id] || 0;
-      add(st, id, await fetchFn(id, o), o);
+      let list;
+      try {
+        list = await fetchFn(id, o);
+      } catch (e) {
+        if (e.message !== 'limit') throw e;
+        const wait = st.wait || (st.wait = {});
+        wait[id] = Date.now();
+        // Посредник назвал темы с каналами: остальные темы тоже ждут, лента не перебирает их по одной
+        if (e.ready) for (const t of TOPICS) if (!e.ready.includes(t[0]) && !st.pools[t[0]]?.length) wait[t[0]] = Date.now();
+        limited++;
+        continue;
+      }
+      add(st, id, list, o);
+      if (!list.length) st.spent[id] = 1;
       v = take(st, id);
     }
     if (v) { shown(st, id, v.id); return { v, topic, why: force === 'new' && i === 0 ? 'new' : why }; }
   }
+  if (limited) throw new Error('limit');
   return null;
+}
+
+// «Меньше»: минус каналу. После BAN минусов ролики канала не показываются.
+export function ban(st, ch) {
+  if (!ch) return;
+  const b = st.ban || (st.ban = {});
+  b[ch] = (b[ch] || 0) + 1;
 }
 
 // Ролик из очереди не показан (кнопка «Новая тема»): вернуть его в тему
@@ -123,7 +149,7 @@ export function putBack(st, item) {
 export function setCfg(st, next) {
   const was = st.cfg || fresh().cfg;
   st.cfg = { ...was, ...next, off: [...new Set(next.off || was.off)], at: Date.now() };
-  if (st.cfg.lang !== was.lang || st.cfg.reg !== was.reg) { st.pools = {}; st.orders = {}; st.spent = {}; }
+  if (st.cfg.lang !== was.lang || st.cfg.reg !== was.reg) { st.pools = {}; st.orders = {}; st.spent = {}; st.wait = {}; }
 }
 
 // «Начать заново»: лента забывает показанные ролики и оценки, настройки остаются

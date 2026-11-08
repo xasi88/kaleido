@@ -1,12 +1,12 @@
 // Лента: карточки роликов поверх плеера, листание, кнопки, учёба подбора.
-import { GROUPS } from './topics.js?v=3e4e8503';
-import * as P from './podbor.js?v=3e4e8503';
-import { st, save, pull } from './pamyat.js?v=3e4e8503';
-import { fetchTopic } from './api.js?v=3e4e8503';
-import * as player from './player.js?v=3e4e8503';
-import { ICON } from './icons.js?v=3e4e8503';
-import './ustanovka.js?v=3e4e8503';
-import * as nastroiki from './nastroiki.js?v=3e4e8503';
+import { GROUPS } from './topics.js?v=54b72f24';
+import * as P from './podbor.js?v=54b72f24';
+import { st, save, pull } from './pamyat.js?v=54b72f24';
+import { fetchTopic } from './api.js?v=54b72f24';
+import * as player from './player.js?v=54b72f24';
+import { ICON } from './icons.js?v=54b72f24';
+import './ustanovka.js?v=54b72f24';
+import * as nastroiki from './nastroiki.js?v=54b72f24';
 
 const AHEAD = 2; // сколько роликов держать готовыми впереди
 const feed = document.getElementById('feed');
@@ -100,7 +100,7 @@ function fill() {
 function leave() {
   const it = items[cur];
   if (!it) return;
-  if (!it.done && !it.like && !it.less) {
+  if (!it.done && !it.like && !it.less && !it.bad) {
     P.learn(st, it.topic[0], P.reward({ watched: player.watched(), duration: player.duration() }));
   }
   it.done = true;
@@ -126,6 +126,12 @@ const watch = new IntersectionObserver(es => {
 }, { threshold: 0.6 });
 
 const go = i => items[i]?.el.scrollIntoView({ behavior: calm ? 'auto' : 'smooth' });
+
+// Ролик не играет (запрещён вне YouTube, удалён): сразу следующий, тема без минуса
+player.onFail(id => {
+  const it = items[cur];
+  if (it && it.v.id === id && !it.bad) { it.bad = true; go(cur + 1); }
+});
 
 // Убрать ролики, которые ждут впереди: они вернутся в запас своих тем
 function dropAhead() {
@@ -176,7 +182,7 @@ feed.addEventListener('click', e => {
     b.classList.toggle('on', own.like);
     if (own.like) { P.learn(st, own.topic[0], 1); save(); }
   }
-  if (a === 'less') { own.less = true; P.learn(st, own.topic[0], -1); save(); go(cur + 1); }
+  if (a === 'less') { own.less = true; P.learn(st, own.topic[0], -1); P.ban(st, own.v.ch); save(); go(cur + 1); }
   if (a === 'new') newTopic();
   if (a === 'out') player.pause();
 });
