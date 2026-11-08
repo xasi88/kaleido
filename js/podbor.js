@@ -1,6 +1,6 @@
 // Подбор ролика: какая тема следующая, без повторов, учёба на досмотрах.
 // Без DOM и без памяти телефона: всё состояние в объекте st (его хранит pamyat.js). Тесты: tests/podbor.test.mjs.
-import { TOPICS, TOPIC, GROUPS } from './topics.js?v=554576d3';
+import { TOPICS, TOPIC, GROUPS } from './topics.js?v=82c3da53';
 
 export const EXPLORE_EVERY = 3; // каждый третий ролик из новой темы
 export const ORDERS = 4;        // сколько разных выдач у одной темы (порядок в worker/src/index.js)

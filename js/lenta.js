@@ -1,11 +1,11 @@
 // Лента: карточки роликов поверх плеера, листание, кнопки, учёба подбора.
-import { GROUPS } from './topics.js?v=554576d3';
-import * as P from './podbor.js?v=554576d3';
-import { load, save } from './pamyat.js?v=554576d3';
-import { fetchTopic } from './api.js?v=554576d3';
-import * as player from './player.js?v=554576d3';
-import { ICON } from './icons.js?v=554576d3';
-import './novoe.js?v=554576d3';
+import { GROUPS } from './topics.js?v=82c3da53';
+import * as P from './podbor.js?v=82c3da53';
+import { load, save } from './pamyat.js?v=82c3da53';
+import { fetchTopic } from './api.js?v=82c3da53';
+import * as player from './player.js?v=82c3da53';
+import { ICON } from './icons.js?v=82c3da53';
+import './novoe.js?v=82c3da53';
 
 const AHEAD = 2; // сколько роликов держать готовыми впереди
 const st = load();

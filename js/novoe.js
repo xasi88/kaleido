@@ -1,5 +1,5 @@
 // Лист «Что нового»: версии из versions.js.
-import { VERSIONS } from './versions.js?v=554576d3';
+import { VERSIONS } from './versions.js?v=82c3da53';
 
 const sheet = document.getElementById('sheet');
 const list = document.getElementById('sheet-list');

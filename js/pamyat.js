@@ -1,5 +1,5 @@
 // Память телефона: что показано и что нравится. Без памяти (частный режим) лента тоже работает.
-import { fresh } from './podbor.js?v=554576d3';
+import { fresh } from './podbor.js?v=82c3da53';
 
 const KEY = 'kaleido.v1';
 
