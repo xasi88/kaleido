@@ -1,0 +1,50 @@
+/* Значения брендбука «Призма» (docs/Брендбук Калейдоскоп.md). Цвета и шрифты только отсюда. */
+:root {
+  --bg: #0a0a0b;
+  --surface: #17171a;
+  --text: #ffffff;
+  --muted: #a1a1a8;
+  --line: #26262b;
+  --scrim: rgba(0, 0, 0, .45);
+  --shade: rgba(0, 0, 0, .75);
+  --track: rgba(255, 255, 255, .2);
+  --accent: #ffc83d;
+  --on-color: #0a0a0b;
+
+  --t1: #ffc83d;
+  --t2: #2ed3b7;
+  --t3: #ff5a36;
+  --t4: #5b8cff;
+  --t5: #ff4fa3;
+  --t6: #9be15d;
+
+  --font: 'Geologica', system-ui, sans-serif;
+
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s6: 24px;
+
+  --r-chip: 6px;
+  --r-sheet: 16px;
+  --btn: 48px;
+  --move: 250ms;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-variant-numeric: tabular-nums;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --move: 0ms; }
+}

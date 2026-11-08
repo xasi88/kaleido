@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0a0a0b">
+<title>Калейдоскоп</title>
+<link rel="icon" href="img/znak.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geologica:wght@400;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="base.css?v=554576d3">
+<link rel="stylesheet" href="css/lenta.css?v=554576d3">
+<link rel="stylesheet" href="css/list.css?v=554576d3">
+</head>
+<body>
+<div class="player-box"><div id="player"></div></div>
+
+<main id="feed">
+  <section class="slide msg wait"><p>Подбираю ролики</p></section>
+</main>
+
+<header class="top">
+  <div class="brand"><img src="img/znak.svg" alt="">Калейдоскоп</div>
+  <button class="pill" id="novoe">Что нового</button>
+</header>
+
+<button class="hint" id="hint"></button>
+
+<div class="sheet" id="sheet" hidden>
+  <div class="sheet-bg" data-close></div>
+  <div class="sheet-box" role="dialog" aria-label="Что нового">
+    <div class="sheet-head"><b>Что нового</b><button class="sheet-close" data-close>Закрыть</button></div>
+    <div id="sheet-list"></div>
+  </div>
+</div>
+
+<script type="module" src="js/lenta.js?v=554576d3"></script>
+</body>
+</html>

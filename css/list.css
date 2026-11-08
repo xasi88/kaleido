@@ -1,0 +1,20 @@
+/* Нижний лист «Что нового» (брендбук «Призма»: листы `--surface`, верхние углы 16). */
+.sheet { position: fixed; inset: 0; z-index: 5; }
+.sheet[hidden] { display: none; }
+.sheet-bg { position: absolute; inset: 0; background: var(--scrim); opacity: 0; transition: opacity var(--move); }
+.sheet-box {
+  position: absolute; left: 0; right: 0; bottom: 0; max-height: 80dvh; overflow-y: auto;
+  background: var(--surface); border-radius: var(--r-sheet) var(--r-sheet) 0 0;
+  padding: var(--s4) var(--s4) calc(var(--s6) + env(safe-area-inset-bottom));
+  transform: translateY(100%); transition: transform var(--move);
+}
+.sheet.open .sheet-bg { opacity: 1; }
+.sheet.open .sheet-box { transform: none; }
+.sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--s2); }
+.sheet-head b { font-size: 18px; font-weight: 800; }
+.sheet-close { height: 44px; padding: 0 var(--s3); color: var(--muted); font-weight: 600; }
+#sheet-list h3 { font-size: 15px; font-weight: 600; margin: var(--s4) 0 var(--s2); padding-top: var(--s4); border-top: 1px solid var(--line); }
+#sheet-list h3:first-child { border-top: 0; padding-top: 0; margin-top: 0; }
+#sheet-list ul { padding-left: var(--s4); display: flex; flex-direction: column; gap: var(--s2); }
+#sheet-list li { font-size: 15px; line-height: 20px; color: var(--text); }
+@media (min-width: 640px) { .sheet-box { left: 50%; width: 480px; margin-left: -240px; } }
