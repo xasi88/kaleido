@@ -1,13 +1,14 @@
 // Лента: карточки роликов поверх плеера, листание, кнопки, учёба подбора.
 // Вид «Меньше и гаснет» (брендбук, журнал 2026-11-08): шапки нет, подписи гаснут через 3 с, касание показывает их снова.
-import { NAMES, PODBORKI } from './topics.js?v=e6702a6c';
-import * as P from './podbor.js?v=e6702a6c';
-import { st, save, pull } from './pamyat.js?v=e6702a6c';
-import { fetchTopic } from './api.js?v=e6702a6c';
-import * as player from './player.js?v=e6702a6c';
-import { ICON } from './icons.js?v=e6702a6c';
-import './ustanovka.js?v=e6702a6c';
-import * as nastroiki from './nastroiki.js?v=e6702a6c';
+import { NAMES, PODBORKI } from './topics.js?v=16a2ce29';
+import * as P from './podbor.js?v=16a2ce29';
+import { st, save, pull } from './pamyat.js?v=16a2ce29';
+import { fetchTopic } from './api.js?v=16a2ce29';
+import * as player from './player.js?v=16a2ce29';
+import { ICON } from './icons.js?v=16a2ce29';
+import './ustanovka.js?v=16a2ce29';
+import * as nastroiki from './nastroiki.js?v=16a2ce29';
+import { anyOpen } from './list.js?v=16a2ce29';
 
 window.kaleido = 1; // лента загрузилась (index.html, kaleidoFail)
 const AHEAD = 2; // сколько роликов держать готовыми впереди
@@ -29,7 +30,7 @@ const WHY = {
 };
 const STOP = {
   limit: 'Лимит YouTube на сегодня кончился. Лента вернётся завтра.',
-  limitRu: 'Русских роликов сейчас нет: лимит YouTube. Выключите «Только на русском» в настройках или зайдите завтра.',
+  limitRu: 'Русских роликов сейчас нет: лимит YouTube. Выключите «Строго» в настройках, раздел «Язык роликов», или зайдите завтра.',
   net: 'Нет связи с YouTube. Проверьте VPN и обновите страницу.',
   empty: 'Темы кончились или выключены. Включите темы или выберите другой язык в настройках.',
   pod: p => `В подборке «${PODBORKI[p]}» пока нет роликов.`,
@@ -147,7 +148,7 @@ function show(it) {
 function leave() {
   const it = items[cur];
   if (!it) return;
-  if (!it.done && !it.like && !it.less && !it.bad) {
+  if (!it.done && !it.rated && !it.less && !it.bad) {
     P.learn(st, it.topic[0], P.reward({ watched: player.watched(), duration: player.duration(), long: it.v.l }));
   }
   it.done = true;
@@ -188,22 +189,29 @@ function dropAhead() {
   for (const it of items.splice(cur + 1)) { P.putBack(st, it); watch.unobserve(it.el); it.el.remove(); }
 }
 
-// Подборка (кнопки слева): нажали: лента идёт в подборку, ещё раз: обычная лента. Ролик на экране остаётся.
-async function setPod(p) {
+// Новые настройки (лист «Настройки» или кнопки подборок): ролик на экране остаётся, следующие уже по новым настройкам.
+// Подборка стала другой: лента сразу листает к её первому ролику.
+async function apply(next) {
   await filling;
   dropAhead();
-  P.setCfg(st, { pod: p });
+  const was = st.cfg.pod;
+  P.setCfg(st, next);
   save(true);
+  const p = st.cfg.pod;
   for (const b of feed.querySelectorAll('.act.pod')) {
     b.classList.toggle('on', b.dataset.p === p);
     b.setAttribute('aria-pressed', String(b.dataset.p === p));
   }
   for (const m of feed.querySelectorAll('.slide.msg')) m.remove();
   stopped = false;
-  wantNew = true;
+  if (p !== was) wantNew = true;
   await fill();
-  if (cur < 0 && items[0]) activate(0); else go(cur + 1);
+  if (cur < 0 && items[0]) activate(0); else if (p !== was) go(cur + 1);
 }
+
+// Подборка (кнопки слева): нажали: лента идёт в подборку, ещё раз: обычная лента
+const setPod = p => apply({ pod: p });
+addEventListener('kaleido:cfg', e => apply(e.detail));
 
 async function newTopic() {
   await filling;
@@ -212,18 +220,6 @@ async function newTopic() {
   await fill();
   go(cur + 1);
 }
-
-// Новые настройки (nastroiki.js): ролик на экране остаётся, следующие уже по новым настройкам
-addEventListener('kaleido:cfg', async e => {
-  await filling;
-  dropAhead();
-  P.setCfg(st, e.detail);
-  save(true);
-  for (const m of feed.querySelectorAll('.slide.msg')) m.remove();
-  stopped = false;
-  await fill();
-  if (cur < 0 && items[0]) activate(0);
-});
 
 function sound() {
   if (!player.isMuted()) return false;
@@ -252,10 +248,11 @@ feed.addEventListener('click', e => {
   const own = items.find(x => x.el.contains(b));
   const a = b.dataset.a;
   if (a === 'nastr') nastroiki.open();
+  // «Ещё такое»: плюс теме один раз. Сняли и нажали снова: второго плюса нет, досмотр тоже не считается.
   if (a === 'like') {
     own.like = !own.like;
     b.classList.toggle('on', own.like);
-    if (own.like) { P.learn(st, own.topic[0], 1); save(); }
+    if (own.like && !own.rated) { own.rated = true; P.learn(st, own.topic[0], 1); save(); }
   }
   if (a === 'less') { own.less = true; P.learn(st, own.topic[0], -1); P.ban(st, own.v.ch); save(); go(cur + 1); }
   if (a === 'new') newTopic();
@@ -264,7 +261,7 @@ feed.addEventListener('click', e => {
 });
 
 addEventListener('keydown', e => {
-  if (!document.getElementById('nast').hidden || !document.getElementById('sheet').hidden) return;
+  if (anyOpen()) return;
   if (e.key === 'ArrowDown' || e.key === 'PageDown') { e.preventDefault(); go(cur + 1); }
   if (e.key === 'ArrowUp' || e.key === 'PageUp') { e.preventDefault(); go(cur - 1); }
   if (e.key === ' ' && items[cur]) { e.preventDefault(); tap(); }

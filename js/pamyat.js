@@ -1,11 +1,14 @@
 // Память ленты: что показано, что нравится, настройки. Лежит на устройстве и в облаке (oblako.js).
 // Без памяти устройства (частный режим) лента тоже работает.
-import { fresh, merge } from './podbor.js?v=e6702a6c';
-import * as cloud from './oblako.js?v=e6702a6c';
+import { fresh, merge } from './podbor.js?v=16a2ce29';
+import * as cloud from './oblako.js?v=16a2ce29';
 
 const KEY = 'kaleido.v1';
 const EVERY = 60000; // в облако не чаще раза в минуту: лимит записей Cloudflare KV
 let timer = 0;
+let dirty = false;
+// Память устройства пишется в паузу, а не во время листания: вся память до 200 КБ, запись на телефоне даёт рывок (версия 0.8)
+const later = window.requestIdleCallback ? f => requestIdleCallback(f, { timeout: 2000 }) : f => setTimeout(f, 500);
 
 function read() {
   try {
@@ -18,8 +21,10 @@ function read() {
 export const st = read();
 
 function local() {
+  dirty = false;
   try { localStorage.setItem(KEY, JSON.stringify(st)); } catch (e) { /* память закрыта или полна */ }
 }
+const flush = () => { if (dirty) local(); };
 
 function take(c) {
   const m = merge(st, c);
@@ -38,10 +43,11 @@ async function push() {
   return cloud.push(st);
 }
 
-// now: сразу в облако (настройки, «Начать заново»), иначе раз в минуту
+// now: сразу на устройство и в облако (настройки, «Начать заново»). Иначе на устройство в паузу, в облако раз в минуту.
 export function save(now) {
   st.at = Date.now();
-  local();
+  if (now) local();
+  else if (!dirty) { dirty = true; later(flush); }
   if (!cloud.on()) return Promise.resolve(false);
   if (now) return push();
   if (!timer) timer = setTimeout(push, EVERY);
@@ -55,5 +61,6 @@ export async function pull() {
   if (c === null) await cloud.push(st);
 }
 
-// Лента ушла с экрана: несохранённое сразу в облако
-document.addEventListener('visibilitychange', () => { if (document.hidden && timer) push(); });
+// Лента ушла с экрана: несохранённое сразу на устройство и в облако
+document.addEventListener('visibilitychange', () => { if (!document.hidden) return; flush(); if (timer) push(); });
+addEventListener('pagehide', flush);

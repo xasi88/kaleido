@@ -1,19 +1,20 @@
-// Настройки (админка ленты): язык, «Только на русском», вид роликов, страна, темы, «Что я смотрю», облако, приложение, «Начать заново».
-// Язык, вид, страна и темы копятся в черновике. Лист закрылся и черновик другой: событие kaleido:cfg, его ловит lenta.js.
-import { TOPICS, GROUPS, NAMES } from './topics.js?v=e6702a6c';
-import { LANGS, COUNTRIES } from './strany.js?v=e6702a6c';
-import { VERSIONS } from './versions.js?v=e6702a6c';
-import * as P from './podbor.js?v=e6702a6c';
-import { st, save } from './pamyat.js?v=e6702a6c';
-import * as cloud from './oblako.js?v=e6702a6c';
-import * as app from './ustanovka.js?v=e6702a6c';
-import * as novoe from './novoe.js?v=e6702a6c';
+// Настройки ленты (версия 0.8, 6 разделов вместо 9): вид роликов, язык («Строго» только у русского), темы,
+// это устройство (версия, установка, облако), «Что я смотрю», «Начать заново». Подборка включена: сверху строка о ней.
+// Вид, язык, темы и подборка копятся в черновике. Лист закрылся и черновик другой: событие kaleido:cfg, его ловит lenta.js.
+import { TOPICS, GROUPS, NAMES, PODBORKI } from './topics.js?v=16a2ce29';
+import { LANGS } from './strany.js?v=16a2ce29';
+import { VERSIONS } from './versions.js?v=16a2ce29';
+import * as P from './podbor.js?v=16a2ce29';
+import { st, save } from './pamyat.js?v=16a2ce29';
+import * as cloud from './oblako.js?v=16a2ce29';
+import * as app from './ustanovka.js?v=16a2ce29';
+import * as novoe from './novoe.js?v=16a2ce29';
+import { sheet } from './list.js?v=16a2ce29';
 
 const FORMATS = [['', 'Короткие'], ['l', 'Обычные'], ['a', 'Все']];
-const sheet = document.getElementById('nast');
 const body = document.getElementById('nast-body');
+const box = sheet(document.getElementById('nast'), apply);
 let draft = null;
-
 
 const el = (tag, cls, text) => {
   const e = document.createElement(tag);
@@ -34,35 +35,49 @@ function part(title) {
   return s;
 }
 
-// Один вариант из списка: язык, страна
-function pick(box, list, key) {
+// Один вариант из списка. change: что ещё сделать после выбора.
+function pick(box, list, key, change) {
   const wrap = el('div', 'opts');
   for (const [v, name] of list) {
     const b = el('button', 'opt', name);
-    b.dataset.v = v;
     b.setAttribute('aria-pressed', String(draft[key] === v));
     b.onclick = () => {
       draft[key] = v;
       for (const x of wrap.children) x.setAttribute('aria-pressed', String(x === b));
-      if (key === 'lang' && v !== 'ru' && draft.ru) { draft.ru = false; ruBtn?.setAttribute('aria-pressed', 'false'); }
+      if (change) change();
     };
     wrap.append(b);
   }
   box.append(wrap);
-  return wrap;
 }
 
-// «Только на русском»: ролики с русским названием и русским звуком. Включает язык «Русский».
-let ruBtn = null;
-function onlyRu(box, langs) {
-  ruBtn = el('button', 'opt', 'Только на русском');
-  ruBtn.setAttribute('aria-pressed', String(draft.ru));
-  ruBtn.onclick = () => {
-    draft.ru = !draft.ru;
-    ruBtn.setAttribute('aria-pressed', String(draft.ru));
-    if (draft.ru) { draft.lang = 'ru'; for (const x of langs.children) x.setAttribute('aria-pressed', String(x.dataset.v === 'ru')); }
+// Подборка не слушает язык и темы: лист говорит об этом прямо
+function podborka(box) {
+  box.append(note(`Сейчас идёт подборка «${PODBORKI[draft.pod]}». Она всегда на русском. Из настроек ниже на неё действует только вид роликов.`));
+  const b = el('button', 'opt hot', 'Включить обычную ленту');
+  b.onclick = () => { draft.pod = ''; render(); };
+  box.append(b);
+}
+
+function vid(box) {
+  pick(box, FORMATS, 'fmt');
+  box.append(note('Короткие: вертикальные, до 3 минут. Обычные: экран лёжа, во всю ширину. Все: через один.'));
+}
+
+// «Строго» только у русского (решение автора 2026-11-09): раньше «Только на русском» был отдельной кнопкой и спорил с языком
+function yazyk(box) {
+  const strict = el('div', 'strict');
+  const sw = el('button', 'opt', 'Строго: только русская речь');
+  sw.onclick = () => { draft.ru = !draft.ru; sw.setAttribute('aria-pressed', String(draft.ru)); };
+  strict.append(sw, note('Ролики на других языках не придут. Роликов будет меньше.'));
+  const upd = () => {
+    if (draft.lang !== 'ru') draft.ru = false;
+    strict.hidden = draft.lang !== 'ru';
+    sw.setAttribute('aria-pressed', String(draft.ru));
   };
-  box.append(ruBtn, note('Строгий фильтр: ролики на других языках не приходят. Тем с русскими роликами меньше.'));
+  pick(box, LANGS, 'lang', upd);
+  box.append(note('«Любой»: ролики со всего мира. Другой язык: YouTube ищет ролики на нём.'), strict);
+  upd();
 }
 
 function topics(box) {
@@ -74,6 +89,7 @@ function topics(box) {
     draft.off = [...off];
     const on = TOPICS.length - off.size;
     head.textContent = on ? `Включено ${on} из ${TOPICS.length}. Коснитесь группы, чтобы выбрать темы.` : 'Все темы выключены: лента остановится.';
+    all.hidden = !off.size;
     fills.forEach(f => f());
   };
   all.onclick = () => { off.clear(); upd(); };
@@ -112,6 +128,41 @@ function topics(box) {
   upd();
 }
 
+// Это устройство: версия и «Что нового», установка, облако. Раньше три места: «Облако» и «Приложение».
+function ustrojstvo(box) {
+  const s = cloud.status;
+  const time = t => new Date(t).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' });
+  const v = VERSIONS[0];
+  const lines = [`Версия ${v.v} от ${v.d}.`];
+  if (!cloud.on()) {
+    lines.push(s.err === 'kod' ? 'Код облака не подошёл: откройте секретную ссылку ещё раз.'
+      : 'Облако не подключено: откройте секретную ссылку один раз на этом устройстве.');
+  } else {
+    lines.push(s.err === 'net' ? 'Нет связи с облаком: память сохранится, когда связь вернётся.'
+      : s.at ? `Память ленты в облаке, последний обмен в ${time(s.at)}.` : 'Память ленты в облаке.');
+  }
+  if (!app.installed() && !app.can()) lines.push('Установка: меню Chrome, «Установить приложение» или «Добавить на главный экран».');
+
+  const row = el('div', 'opts');
+  const nw = el('button', 'opt' + (novoe.unseen() ? ' hot' : ''), 'Что нового');
+  nw.onclick = () => { novoe.open(); nw.classList.remove('hot'); };
+  row.append(nw);
+  if (app.can()) {
+    const b = el('button', 'opt hot', 'Установить');
+    b.dataset.install = '';
+    row.append(b);
+  }
+  if (cloud.on()) {
+    const b = el('button', 'opt', 'Скопировать ссылку для другого устройства');
+    b.onclick = async () => {
+      try { await navigator.clipboard.writeText(cloud.link()); b.textContent = 'Ссылка скопирована'; } catch (e) { b.textContent = 'Не скопировалось'; }
+    };
+    row.append(b);
+  }
+  box.append(note(lines.join(' ')), row);
+  if (cloud.on()) box.append(note('Ссылка секретная: она открывает вашу память ленты. Отправляйте её только себе.'));
+}
+
 function watched(box) {
   const s = P.stats(st);
   box.append(note(s.n ? `Показано ${s.n} ${word(s.n, 'ролик', 'ролика', 'роликов')}. Полоса длиннее: группа нравится больше.` : 'Вы ещё ничего не посмотрели.'));
@@ -125,49 +176,15 @@ function watched(box) {
   if (s.top.length) box.append(note('Любимые темы: ' + s.top.map(x => x.t[2]).join(', ') + '.'));
 }
 
-function oblako(box) {
-  const s = cloud.status;
-  const time = t => new Date(t).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' });
-  if (!cloud.on()) {
-    box.append(note(s.err === 'kod'
-      ? 'Код облака не подошёл. Откройте секретную ссылку ещё раз.'
-      : 'Облако не подключено. Откройте секретную ссылку один раз на этом устройстве.'));
-    return;
-  }
-  box.append(note(s.err === 'net' ? 'Нет связи с облаком. Память сохранится, когда связь вернётся.'
-    : s.at ? `Память ленты в облаке. Последний обмен в ${time(s.at)}.` : 'Облако подключено.'));
-  const b = el('button', 'opt', 'Скопировать ссылку для другого устройства');
-  b.onclick = async () => {
-    try { await navigator.clipboard.writeText(cloud.link()); b.textContent = 'Ссылка скопирована'; } catch (e) { b.textContent = 'Не скопировалось'; }
-  };
-  box.append(b, note('Ссылка секретная: она открывает вашу память ленты. Отправляйте её только себе.'));
-}
-
-function prilozhenie(box) {
-  const v = VERSIONS[0];
-  box.append(note(`Версия ${v.v} от ${v.d}.`));
-  const row = el('div', 'opts');
-  const nw = el('button', 'opt' + (novoe.unseen() ? ' hot' : ''), 'Что нового');
-  nw.onclick = () => { novoe.open(); nw.classList.remove('hot'); };
-  row.append(nw);
-  if (app.can()) {
-    const b = el('button', 'opt hot', 'Установить');
-    b.dataset.install = '';
-    row.append(b);
-  }
-  box.append(row, note(app.installed() ? 'Лента открыта как приложение.'
-    : app.can() ? 'Значок появится на рабочем столе, лента откроется в своём окне.'
-      : 'Установка: меню Chrome, пункт «Установить приложение» или «Добавить на главный экран».'));
-}
-
 function zanovo(box) {
-  box.append(note('Лента забудет показанные ролики и оценки. Темы, язык и страна останутся.'));
+  box.append(note('Лента забудет показанные ролики, оценки и каналы после «Меньше». Настройки останутся.'));
   const b = el('button', 'opt danger', 'Начать заново');
   let armed = 0;
   b.onclick = async () => {
     if (Date.now() - armed > 4000) { armed = Date.now(); b.textContent = 'Точно? Коснитесь ещё раз'; return; }
     b.disabled = true;
     b.textContent = 'Начинаю заново';
+    P.setCfg(st, draft); // правки этого листа не теряются: страница сейчас перезагрузится
     P.restart(st);
     await save(true);
     location.reload();
@@ -177,45 +194,35 @@ function zanovo(box) {
 
 function render() {
   body.textContent = '';
-  const lang = part('Язык роликов');
-  const langs = pick(lang, LANGS, 'lang');
-  lang.append(note('«Любой»: ролики со всего мира. Язык: YouTube ищет ролики на этом языке.'));
-  onlyRu(lang, langs);
-  const fmt = part('Вид роликов');
-  pick(fmt, FORMATS, 'fmt');
-  fmt.append(note('Короткие: вертикальные, до минуты. Обычные: больше 4 минут, экран лёжа.'));
-  const reg = part('Страна');
-  pick(reg, COUNTRIES, 'reg');
-  reg.append(note('YouTube покажет ролики, которые смотрят в этой стране.'));
+  if (PODBORKI[draft.pod]) podborka(part('Подборка'));
+  vid(part('Вид роликов'));
+  yazyk(part('Язык роликов'));
   topics(part('Темы'));
+  ustrojstvo(part('Это устройство'));
   watched(part('Что я смотрю'));
-  oblako(part('Облако'));
-  prilozhenie(part('Приложение'));
   zanovo(part('Начать заново'));
 }
 
 export function open() {
-  draft = { off: [...st.cfg.off], lang: st.cfg.lang, reg: st.cfg.reg, fmt: st.cfg.fmt || '', ru: !!st.cfg.ru };
+  const c = st.cfg;
+  draft = { off: [...c.off], lang: c.lang || '', fmt: c.fmt || '', ru: !!c.ru, pod: PODBORKI[c.pod] ? c.pod : '' };
   render();
-  sheet.hidden = false;
-  body.parentElement.scrollTop = 0;
-  requestAnimationFrame(() => requestAnimationFrame(() => sheet.classList.add('open')));
+  box.open();
+  body.parentElement.scrollTop = 0; // после open: скрытый лист прокрутку не принимает
 }
 
-function close() {
+// Лист закрылся: черновик другой, событие для ленты
+function apply() {
   if (!draft) return;
-  const was = st.cfg;
-  const same = draft.lang === was.lang && draft.reg === was.reg && draft.fmt === (was.fmt || '') && draft.ru === !!was.ru
-    && draft.off.length === was.off.length && draft.off.every(x => was.off.includes(x));
+  const c = st.cfg;
+  const same = draft.lang === (c.lang || '') && draft.fmt === (c.fmt || '') && draft.ru === !!c.ru
+    && draft.pod === (PODBORKI[c.pod] ? c.pod : '')
+    && draft.off.length === c.off.length && draft.off.every(x => c.off.includes(x));
   if (!same) dispatchEvent(new CustomEvent('kaleido:cfg', { detail: draft }));
   draft = null;
-  sheet.classList.remove('open');
-  setTimeout(() => { sheet.hidden = true; }, 250);
 }
 
 // Новая версия ещё не открыта: точка на кнопке «Настройки» у каждого ролика (lenta.css, html.unseen)
 const dot = () => document.documentElement.classList.toggle('unseen', novoe.unseen());
-sheet.addEventListener('click', e => { if (e.target.closest('[data-close]')) close(); });
-addEventListener('keydown', e => { if (e.key === 'Escape' && !sheet.hidden && document.getElementById('sheet').hidden) close(); });
 addEventListener('kaleido:seen', dot);
 dot();

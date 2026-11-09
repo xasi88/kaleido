@@ -1,12 +1,13 @@
 // Подбор ролика: какая тема следующая, без повторов, учёба на досмотрах.
 // Без DOM и без памяти телефона: всё состояние в объекте st (его хранит pamyat.js). Тесты: tests/podbor.test.mjs.
-import { TOPICS, TOPIC, GROUPS, PODBORKI, PTOPICS } from './topics.js?v=e6702a6c';
+import { TOPICS, TOPIC, GROUPS, PODBORKI, PTOPICS } from './topics.js?v=16a2ce29';
 
 export const EXPLORE_EVERY = 3; // каждый третий ролик из новой темы
 // Выдачи темы не кончаются: 0-3 поиск, дальше полки каналов (worker/src/roliki.js). Пустая выдача: тема кончилась.
 export const WAIT = 3600000;    // тема упёрлась в лимит YouTube: час не выпадает
 export const SPENT = 86400000; // тема кончилась: сутки не выпадает, потом полки с начала (новые ролики, новые каналы)
 export const BAN = 2;           // «Меньше» два раза на роликах канала: канал больше не показывается
+export const PAGES = 24;        // выдачи подряд, где всё уже показано (после смены языка, через сутки): лента листает их дальше
 const SEEN_MAX = 5000;
 const GROUP_IDS = [...Object.keys(GROUPS), ...Object.keys(PODBORKI)];
 
@@ -16,12 +17,12 @@ export const topicsOf = st => (PODBORKI[st.cfg?.pod] ? PTOPICS.filter(t => t[1] 
 // Цвет группы по кругу из шести цветов брендбука: 't1'...'t6'
 export const color = (g, shift = 0) => 't' + ((GROUP_IDS.indexOf(g) + shift) % 6 + 1);
 
-// cfg: настройки (выключенные темы, язык, страна, вид роликов fmt: '' короткие, 'l' обычные, 'a' все; ru: только на русском;
-// pod: подборка или пусто),
+// cfg: настройки (выключенные темы, язык, вид роликов fmt: '' короткие, 'l' обычные, 'a' все; ru: «Строго», только на русском;
+// pod: подборка или пусто). Страны в настройках нет с версии 0.8 (решение автора 2026-11-09): лента со всего мира.
 // at: время записи, r: время «Начать заново»
 export const fresh = () => ({
   n: 0, seen: {}, g: {}, t: {}, pools: {}, orders: {}, spent: {}, wait: {}, ban: {}, last: [], at: 0, r: 0,
-  cfg: { off: [], lang: '', reg: '', fmt: '', ru: false, pod: '', at: 0 },
+  cfg: { off: [], lang: '', fmt: '', ru: false, pod: '', at: 0 },
 });
 
 const score = (o, id) => (o[id] ? o[id].s : 0);
@@ -112,8 +113,11 @@ function add(st, id, list, o) {
 // Лимит YouTube у одной темы: тема ждёт час, лента берёт другую. Лимит у всех попыток: ошибка «limit» наверх.
 export async function nextItem(st, fetchFn, force, rnd = Math.random) {
   let limited = 0;
-  // Тема с лимитом не считается попыткой: она ждёт час и больше не выпадает, лента пробует следующую
-  for (let i = 0; i - limited < 8 && i < 120; i++) {
+  let empty = 0;
+  let pages = 0;
+  // Попытка не удалась, только когда выдача пустая (тема кончилась). Тема с лимитом ждёт час и больше не выпадает.
+  // Выдача, где всё уже показано: тема листает дальше, это не «темы кончились» (тест «после смены языка»).
+  for (let i = 0; empty < 8 && pages < PAGES && i < 120; i++) {
     const { topic, why } = pickTopic(st, rnd, i === 0 ? force : undefined);
     if (!topic) break;
     const id = topic[0];
@@ -136,6 +140,7 @@ export async function nextItem(st, fetchFn, force, rnd = Math.random) {
       add(st, id, list, o);
       if (!list.length) st.spent[id] = Date.now();
       v = take(st, id);
+      if (!v) { if (list.length) pages++; else empty++; }
     }
     if (v) { shown(st, id, v.id); return { v, topic, why: force === 'new' && i === 0 ? 'new' : why }; }
   }
@@ -158,14 +163,25 @@ export function putBack(st, item) {
   (st.pools[item.topic[0]] || (st.pools[item.topic[0]] = [])).unshift(item.v);
 }
 
-// Настройки, от которых зависят ролики темы: язык, страна, вид, «только на русском»
-const feedKey = c => [c.lang || '', c.reg || '', c.fmt || '', c.ru ? 1 : 0].join('|');
+// Настройки, от которых зависят ролики темы. Обычная тема: язык, вид, «Строго». Тема подборки всегда на русском: только вид.
+const feedKey = (c, pod) => (pod ? c.fmt || '' : [c.lang || '', c.fmt || '', c.ru ? 1 : 0].join('|'));
 
-// Новые настройки. Другой язык, страна, вид или «только на русском»: запас роликов и выдачи тем начинаются заново.
+// Настройки стали другими: запас, выдачи и ожидание тем, которых это касается, начинаются заново
+function drop(st, was, now) {
+  for (const k of ['pools', 'orders', 'spent', 'wait']) {
+    const o = (st[k] = { ...st[k] });
+    for (const id of Object.keys(o)) {
+      const pod = !!PODBORKI[TOPIC[id]?.[1]];
+      if (feedKey(was, pod) !== feedKey(now, pod)) delete o[id];
+    }
+  }
+}
+
+// Новые настройки. Другой язык, вид или «Строго»: запас роликов и выдачи этих тем начинаются заново.
 export function setCfg(st, next) {
   const was = st.cfg || fresh().cfg;
   st.cfg = { ...was, ...next, off: [...new Set(next.off || was.off)], at: Date.now() };
-  if (feedKey(st.cfg) !== feedKey(was)) { st.pools = {}; st.orders = {}; st.spent = {}; st.wait = {}; }
+  drop(st, was, st.cfg);
 }
 
 // «Начать заново»: лента забывает показанные ролики и оценки, настройки остаются
@@ -186,8 +202,7 @@ export function merge(local, cloud) {
   const out = { ...fresh(), ...a };
   if (rl === rc) out.seen = { ...b.seen, ...a.seen };
   const cfg = (cloud.cfg?.at || 0) > (local.cfg?.at || 0) ? cloud.cfg : local.cfg;
-  if (cfg && feedKey(cfg) !== feedKey(out.cfg)) { out.pools = {}; out.orders = {}; out.spent = {}; }
-  if (cfg) out.cfg = cfg;
+  if (cfg) { drop(out, out.cfg || fresh().cfg, cfg); out.cfg = cfg; }
   return out;
 }
 
@@ -195,7 +210,7 @@ export function merge(local, cloud) {
 export function stats(st) {
   const groups = GROUP_IDS.map(g => ({ g, k: shows(st.g, g), s: score(st.g, g) }))
     .filter(x => x.k > 0).sort((x, y) => y.s - x.s || y.k - x.k);
-  const top = TOPICS.map(t => ({ t, k: shows(st.t, t[0]), s: score(st.t, t[0]) }))
+  const top = [...TOPICS, ...PTOPICS].map(t => ({ t, k: shows(st.t, t[0]), s: score(st.t, t[0]) }))
     .filter(x => x.k >= 2 && x.s > 0).sort((x, y) => y.s - x.s).slice(0, 5);
   return { n: st.n, groups, top };
 }

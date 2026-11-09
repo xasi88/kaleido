@@ -1,5 +1,5 @@
 // Установка как приложение: помощник sw.js (без него Chrome не ставит приложение) и кнопка «Установить».
-// Кнопки с data-install видны, только когда Chrome готов поставить приложение. Событие kaleido:app: вид поменялся.
+// Кнопки с data-install (лист «Настройки») видны, только когда Chrome готов поставить приложение.
 let prompt = null;
 
 export const installed = () =>
@@ -8,7 +8,6 @@ export const can = () => !!prompt;
 
 function show() {
   for (const b of document.querySelectorAll('[data-install]')) b.hidden = !prompt;
-  dispatchEvent(new Event('kaleido:app'));
 }
 
 export async function install() {

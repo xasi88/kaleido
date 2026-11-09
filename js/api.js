@@ -1,15 +1,14 @@
 // Запрос к посреднику kaleido-api (worker/). Ключа YouTube здесь нет: он только в посреднике.
 export const API = 'https://kaleido-api.gmarbigm.workers.dev/';
 
-import { TOPIC, PODBORKI } from './topics.js?v=e6702a6c';
+import { TOPIC, PODBORKI } from './topics.js?v=16a2ce29';
 
-// cfg: язык и страна из настроек (strany.js), пусто: весь мир. fmt: вид роликов, ru: только на русском (worker/src/russkij.js)
-// Тема подборки (topics.js, PODBORKI): всегда только на русском, весь мир
+// cfg: язык из настроек (strany.js), пусто: любой. fmt: вид роликов, ru: «Строго», только на русском (worker/src/russkij.js)
+// Тема подборки (topics.js, PODBORKI): всегда только на русском. Страны нет с версии 0.8: лента со всего мира.
 export async function fetchTopic(id, o, cfg = {}) {
   const pod = !!PODBORKI[TOPIC[id]?.[1]];
   const q = new URLSearchParams({ t: id, o });
   if (cfg.lang) q.set('l', cfg.lang);
-  if (cfg.reg && !pod) q.set('r', cfg.reg);
   if (cfg.fmt) q.set('f', cfg.fmt);
   if (cfg.ru || pod) { q.set('l', 'ru'); q.set('s', '1'); }
   let r;

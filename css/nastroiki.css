@@ -12,7 +12,10 @@
   background: var(--line); color: var(--text); font-size: 15px; font-weight: 600; text-align: left;
   transition: background var(--move), color var(--move);
 }
-.ns > .opt { align-self: flex-start; }
+.ns > .opt, .strict > .opt { align-self: flex-start; }
+.opt[hidden], .strict[hidden] { display: none; }
+/* «Строго» под языком: виден, только когда выбран русский */
+.strict { display: flex; flex-direction: column; gap: var(--s3); padding-left: var(--s3); border-left: 2px solid var(--line); }
 .opt[aria-pressed="true"] { background: var(--accent); color: var(--on-color); }
 .opt.topic[aria-pressed="true"] { background: var(--c); }
 .opt.topic[aria-pressed="false"] { color: var(--muted); }
