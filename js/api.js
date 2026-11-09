@@ -1,7 +1,7 @@
 // Запрос к посреднику kaleido-api (worker/). Ключа YouTube здесь нет: он только в посреднике.
 export const API = 'https://kaleido-api.gmarbigm.workers.dev/';
 
-import { TOPIC, PODBORKI } from './topics.js?v=16a2ce29';
+import { TOPIC, PODBORKI } from './topics.js?v=3c2ae583';
 
 // cfg: язык из настроек (strany.js), пусто: любой. fmt: вид роликов, ru: «Строго», только на русском (worker/src/russkij.js)
 // Тема подборки (topics.js, PODBORKI): всегда только на русском. Страны нет с версии 0.8: лента со всего мира.

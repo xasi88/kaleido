@@ -1,11 +1,12 @@
 // Подбор ролика: какая тема следующая, без повторов, учёба на досмотрах.
 // Без DOM и без памяти телефона: всё состояние в объекте st (его хранит pamyat.js). Тесты: tests/podbor.test.mjs.
-import { TOPICS, TOPIC, GROUPS, PODBORKI, PTOPICS } from './topics.js?v=16a2ce29';
+import { TOPICS, TOPIC, GROUPS, PODBORKI, PTOPICS } from './topics.js?v=3c2ae583';
 
 export const EXPLORE_EVERY = 3; // каждый третий ролик из новой темы
 // Выдачи темы не кончаются: 0-3 поиск, дальше полки каналов (worker/src/roliki.js). Пустая выдача: тема кончилась.
 export const WAIT = 3600000;    // тема упёрлась в лимит YouTube: час не выпадает
 export const SPENT = 86400000; // тема кончилась: сутки не выпадает, потом полки с начала (новые ролики, новые каналы)
+export const RENEW = 21600000;  // тема «AI-разработки» (метка 'a'): через 6 часов выдачи с начала, сверху свежие ролики (0.9)
 export const BAN = 2;           // «Меньше» два раза на роликах канала: канал больше не показывается
 export const PAGES = 24;        // выдачи подряд, где всё уже показано (после смены языка, через сутки): лента листает их дальше
 const SEEN_MAX = 5000;
@@ -21,7 +22,7 @@ export const color = (g, shift = 0) => 't' + ((GROUP_IDS.indexOf(g) + shift) % 6
 // pod: подборка или пусто). Страны в настройках нет с версии 0.8 (решение автора 2026-11-09): лента со всего мира.
 // at: время записи, r: время «Начать заново»
 export const fresh = () => ({
-  n: 0, seen: {}, g: {}, t: {}, pools: {}, orders: {}, spent: {}, wait: {}, ban: {}, last: [], at: 0, r: 0,
+  n: 0, seen: {}, g: {}, t: {}, pools: {}, orders: {}, spent: {}, wait: {}, ft: {}, ban: {}, last: [], at: 0, r: 0,
   cfg: { off: [], lang: '', fmt: '', ru: false, pod: '', at: 0 },
 });
 
@@ -124,6 +125,7 @@ export async function nextItem(st, fetchFn, force, rnd = Math.random) {
     let v = take(st, id);
     if (!v && !isSpent(st, id, Date.now())) {
       if (st.spent[id]) { delete st.spent[id]; st.orders[id] = 0; } // сутки прошли: выдачи темы с начала
+      else if (topic[4] === 'a' && Date.now() - (st.ft?.[id] || 0) > RENEW) st.orders[id] = 0; // ft: время запроса темы
       const o = st.orders[id] || 0;
       let list;
       try {
@@ -138,6 +140,7 @@ export async function nextItem(st, fetchFn, force, rnd = Math.random) {
         continue;
       }
       add(st, id, list, o);
+      (st.ft || (st.ft = {}))[id] = Date.now();
       if (!list.length) st.spent[id] = Date.now();
       v = take(st, id);
       if (!v) { if (list.length) pages++; else empty++; }
@@ -168,7 +171,7 @@ const feedKey = (c, pod) => (pod ? c.fmt || '' : [c.lang || '', c.fmt || '', c.r
 
 // Настройки стали другими: запас, выдачи и ожидание тем, которых это касается, начинаются заново
 function drop(st, was, now) {
-  for (const k of ['pools', 'orders', 'spent', 'wait']) {
+  for (const k of ['pools', 'orders', 'spent', 'wait', 'ft']) {
     const o = (st[k] = { ...st[k] });
     for (const id of Object.keys(o)) {
       const pod = !!PODBORKI[TOPIC[id]?.[1]];

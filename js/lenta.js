@@ -1,14 +1,14 @@
 // Лента: карточки роликов поверх плеера, листание, кнопки, учёба подбора.
 // Вид «Меньше и гаснет» (брендбук, журнал 2026-11-08): шапки нет, подписи гаснут через 3 с, касание показывает их снова.
-import { NAMES, PODBORKI } from './topics.js?v=16a2ce29';
-import * as P from './podbor.js?v=16a2ce29';
-import { st, save, pull } from './pamyat.js?v=16a2ce29';
-import { fetchTopic } from './api.js?v=16a2ce29';
-import * as player from './player.js?v=16a2ce29';
-import { ICON } from './icons.js?v=16a2ce29';
-import './ustanovka.js?v=16a2ce29';
-import * as nastroiki from './nastroiki.js?v=16a2ce29';
-import { anyOpen } from './list.js?v=16a2ce29';
+import { NAMES, PODBORKI } from './topics.js?v=3c2ae583';
+import * as P from './podbor.js?v=3c2ae583';
+import { st, save, pull } from './pamyat.js?v=3c2ae583';
+import { fetchTopic } from './api.js?v=3c2ae583';
+import * as player from './player.js?v=3c2ae583';
+import { ICON } from './icons.js?v=3c2ae583';
+import './ustanovka.js?v=3c2ae583';
+import * as nastroiki from './nastroiki.js?v=3c2ae583';
+import { anyOpen } from './list.js?v=3c2ae583';
 
 window.kaleido = 1; // лента загрузилась (index.html, kaleidoFail)
 const AHEAD = 2; // сколько роликов держать готовыми впереди

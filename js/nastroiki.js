@@ -1,15 +1,15 @@
 // Настройки ленты (версия 0.8, 6 разделов вместо 9): вид роликов, язык («Строго» только у русского), темы,
 // это устройство (версия, установка, облако), «Что я смотрю», «Начать заново». Подборка включена: сверху строка о ней.
 // Вид, язык, темы и подборка копятся в черновике. Лист закрылся и черновик другой: событие kaleido:cfg, его ловит lenta.js.
-import { TOPICS, GROUPS, NAMES, PODBORKI } from './topics.js?v=16a2ce29';
-import { LANGS } from './strany.js?v=16a2ce29';
-import { VERSIONS } from './versions.js?v=16a2ce29';
-import * as P from './podbor.js?v=16a2ce29';
-import { st, save } from './pamyat.js?v=16a2ce29';
-import * as cloud from './oblako.js?v=16a2ce29';
-import * as app from './ustanovka.js?v=16a2ce29';
-import * as novoe from './novoe.js?v=16a2ce29';
-import { sheet } from './list.js?v=16a2ce29';
+import { TOPICS, GROUPS, NAMES, PODBORKI } from './topics.js?v=3c2ae583';
+import { LANGS } from './strany.js?v=3c2ae583';
+import { VERSIONS } from './versions.js?v=3c2ae583';
+import * as P from './podbor.js?v=3c2ae583';
+import { st, save } from './pamyat.js?v=3c2ae583';
+import * as cloud from './oblako.js?v=3c2ae583';
+import * as app from './ustanovka.js?v=3c2ae583';
+import * as novoe from './novoe.js?v=3c2ae583';
+import { sheet } from './list.js?v=3c2ae583';
 
 const FORMATS = [['', 'Короткие'], ['l', 'Обычные'], ['a', 'Все']];
 const body = document.getElementById('nast-body');
